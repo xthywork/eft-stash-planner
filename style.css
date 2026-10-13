@@ -14,7 +14,7 @@ body:before{content:"";pointer-events:none;position:fixed;inset:0;z-index:-1;bac
 
 
 
-@media print{body{background:white;color:black}.sidebar,.topbar,.toolbar,.inventory-panel,.settings,.help,.page-footer,.steps-footer,.view-nav,.visual-foot{display:none!important}.shell{display:block}.content{padding:0}.layout{display:block}.results{display:block}.panel{break-inside:avoid;border:1px solid #999;background:white;box-shadow:none;margin:12px 0}.metrics,.metric{background:white!important}.metric-num,.panel-title,.visual-heading,.step-main b{color:black}.visual{break-after:avoid}.step{break-inside:avoid}.grid-shell{background:white}.node-cell{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
 
 /* ───── App shell: the viewport never scrolls; only work panels do ───── */
 html,body{width:100%;height:100%;min-height:0;overflow:hidden;overscroll-behavior:none}
@@ -79,15 +79,7 @@ body{position:relative}
 
 
 
-@media print{
- html,body{height:auto!important;overflow:visible!important}
- .shell,.shell.sidebar-collapsed{display:block!important;height:auto!important;overflow:visible!important}
- .main,.content,.page-workspace,.layout,.results{display:block!important;height:auto!important;overflow:visible!important}
- .page-settings,.toolbar,.sidebar,.side-scrim{display:none!important}
- .inventory-panel{display:none!important}
- .results .panel{break-inside:avoid}
- .visual-content,.grid-workspace{overflow:visible!important}
-}
+
 
 /* v3 — dense desktop workstation */
 html,body{min-width:1040px;overflow:hidden}
@@ -150,12 +142,7 @@ html,body{min-width:1040px;overflow:hidden}
 .toolbar-group{flex-wrap:nowrap}.toolbar{gap:9px}
 .toolbar .btn{font-size:11px;padding:8px 11px}
 .settings-page-top h2,.data-panel h2,.modal-header h3{margin-top:0}
-@media print{
- .view-pane[hidden]{display:block!important}
- .visual-head,.steps-footer,.sidebar{display:none!important}
- .visual .view-pane{display:block!important}
- .visual .steps{border-top:1px solid #ddd}
-}
+
 
 /* Stash workspace */
 .stash-controls{padding:13px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -247,9 +234,28 @@ html,body{min-width:1040px;overflow:hidden}
 .preview-path .path-seg[aria-current=location]{color:var(--accent2);font-weight:650;cursor:default}
 .preview-path .path-chevron{flex:0 0 auto;font:12px var(--mono);color:#56624f;user-select:none}
 .preview-path .path-empty{color:#707f70;font-size:11px}
-@media print{.stash-mode .results>.result-overview{height:auto!important;overflow:visible!important}.stash-leftovers-list{overflow:visible!important}.preview-path{overflow:visible!important}}
-@media print{
- .stash-mode .results{display:block}
- .stash-mode .results>.visual,.stash-mode .results>.result-overview{display:block;height:auto;break-inside:avoid}
- .stash-mode .visual .visual-content{overflow:visible!important}
+
+
+
+
+/* Settings open as a focused left drawer over the live workspace. */
+.page-settings[hidden]{display:none!important}
+.page-settings:not([hidden]){
+ position:fixed;inset:0 auto 0 0;z-index:120;
+ width:min(480px,calc(100vw - 32px));height:100vh;height:100dvh;max-height:100dvh;
+ padding:0 20px 24px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ background:var(--bg);border-right:1px solid #505744;box-shadow:22px 0 60px #0009;
+ scrollbar-color:#465341 transparent;scrollbar-width:thin;
+ animation:settings-drawer-in .18s ease-out both;
 }
+.settings-scrim[hidden]{display:none!important}
+.settings-scrim{position:fixed;inset:0;z-index:110;border:0;padding:0;background:#050806b8;backdrop-filter:blur(2px)}
+.settings-page-top{position:sticky;top:0;z-index:2;padding:17px 0 14px;margin:0 0 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+.settings-page-top h2{font-size:19px;letter-spacing:-.025em}
+.settings-columns{grid-template-columns:minmax(0,1fr);gap:14px}
+.settings-column-main,.settings-column-side{gap:14px}
+.page-settings .settings{padding:20px 18px}
+.page-settings .stash-settings{padding:20px 18px}
+.page-settings .data-panel,.page-settings .help{padding:20px 18px}
+@keyframes settings-drawer-in{from{opacity:.7;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@media(prefers-reduced-motion:reduce){.page-settings:not([hidden]){animation:none}}
