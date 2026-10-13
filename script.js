@@ -260,6 +260,64 @@ function switchPage(page){
  if(smallScreen())setSidebarCollapsed(true,false);
  if(!settings){plan();requestAnimationFrame(renderGrid)}
 }
+function initLayoutResizers(){
+ const layout=$('workspaceLayout');if(!layout)return;
+ const panels=[$('inventory'),$('result'),document.querySelector('.visual')];
+ const bars=[...layout.querySelectorAll('[data-resizer]')];
+ const minWidths=[250,220,260];
+ const storageKey='stash-lab-layout-columns';
+ const readWidths=()=>panels.map(panel=>panel.getBoundingClientRect().width);
+ const setWidths=widths=>{
+  const total=widths.reduce((sum,width)=>sum+width,0);if(!total)return;
+  ['--inventory-fr','--analysis-fr','--preview-fr'].forEach((name,index)=>layout.style.setProperty(name,`${widths[index]/total}fr`));
+  bars.forEach((bar,index)=>{
+   const pair=widths[index]+widths[index+1];
+   bar.setAttribute('aria-valuemin',String(minWidths[index]));
+   bar.setAttribute('aria-valuemax',String(Math.max(minWidths[index],Math.round(pair-minWidths[index+1]))));
+   bar.setAttribute('aria-valuenow',String(Math.round(widths[index])));
+  });
+ };
+ const saveWidths=()=>{
+  const widths=readWidths(),total=widths.reduce((sum,width)=>sum+width,0);
+  if(!total)return;
+  try{localStorage.setItem(storageKey,JSON.stringify(widths.map(width=>width/total)))}catch(e){}
+ };
+ try{
+  const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
+  if(Array.isArray(saved)&&saved.length===3&&saved.every(value=>Number.isFinite(value)&&value>0))setWidths(saved);
+ }catch(e){}
+ const updatePair=(index,leftWidth,pairWidth)=>{
+  const widths=readWidths();
+  const minLeft=minWidths[index],minRight=minWidths[index+1];
+  const nextLeft=Math.max(minLeft,Math.min(pairWidth-minRight,leftWidth));
+  widths[index]=nextLeft;widths[index+1]=pairWidth-nextLeft;setWidths(widths);
+ };
+ bars.forEach((bar,index)=>{
+  let drag=null;
+  bar.addEventListener('pointerdown',event=>{
+   if(event.button!==0&&event.pointerType==='mouse')return;
+   const widths=readWidths();drag={pointerId:event.pointerId,startX:event.clientX,left:widths[index],pair:widths[index]+widths[index+1]};
+   bar.classList.add('is-resizing');bar.setPointerCapture(event.pointerId);event.preventDefault();
+  });
+  bar.addEventListener('pointermove',event=>{
+   if(!drag||drag.pointerId!==event.pointerId)return;
+   updatePair(index,drag.left+event.clientX-drag.startX,drag.pair);
+  });
+  const endDrag=event=>{
+   if(!drag||drag.pointerId!==event.pointerId)return;
+   drag=null;bar.classList.remove('is-resizing');saveWidths();
+  };
+  bar.addEventListener('pointerup',endDrag);bar.addEventListener('pointercancel',endDrag);
+  bar.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
+   event.preventDefault();const widths=readWidths(),pair=widths[index]+widths[index+1];
+   const step=event.shiftKey?32:12,delta=event.key==='ArrowRight'?step:-step;
+   updatePair(index,widths[index]+delta,pair);saveWidths();
+  });
+ });
+ requestAnimationFrame(()=>setWidths(readWidths()));
+}
+initLayoutResizers();
 function updateStashControls(){
  const w=state.stashW,h=state.stashH;
  $('stashWidth').value=w;$('stashHeight').value=h;
