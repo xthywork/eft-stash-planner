@@ -272,10 +272,6 @@ html,body{min-width:1040px;overflow:hidden}
 @media(prefers-reduced-motion:reduce){.column-resizer:before{transition:none}}
 
 /* Local setup library shares the adjustable inventory column. */
-.inventory-view-tabs{display:flex;gap:5px;padding:10px 14px 0;flex:0 0 auto}
-.inventory-view-tab{flex:1;min-width:0;padding:9px 6px;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px}
-.inventory-view-tab.active{color:var(--accent2);background:#292d22;border-color:#645b43}
-.inventory-view-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .saved-memory-badge{font:11px var(--mono);color:var(--accent2)}
 .inventory-view,.saved-memory-view{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .inventory-view[hidden],.saved-memory-view[hidden]{display:none!important}
@@ -317,3 +313,6 @@ html,body{min-width:1040px;overflow:hidden}
 .page-workspace .node-cell-title{font-size:12px;min-width:0}
 .page-workspace .node-cell-dim{font-size:11px;overflow:hidden;white-space:nowrap}
 .xray-label{pointer-events:none;overflow:hidden}
+
+.sidebar .saved-memory-badge{margin-left:auto}
+.sidebar-collapsed .saved-memory-badge{display:none}

@@ -28,22 +28,19 @@
 <aside aria-label="功能導覽" class="sidebar" id="sidebar">
 <div class="sidebar-top"><button aria-controls="sidebarNav" aria-expanded="true" aria-label="收合側邊欄" class="sidebar-toggle" id="sidebarToggle" title="收合 / 展開側邊欄" type="button"><svg><use href="#i-chevron"></use></svg></button></div>
 <nav aria-label="頁面切換" id="sidebarNav">
-<button aria-current="page" aria-label="收納工作台" class="nav-link active" data-page="workspace" title="收納工作台" type="button"><svg><use href="#i-box"></use></svg><span data-i18n="收納工作台">收納工作台</span></button>
+<button aria-current="page" aria-label="出征背包規劃" class="nav-link active" data-page="workspace" title="出征背包規劃" type="button"><svg><use href="#i-box"></use></svg><span data-i18n="出征背包規劃">出征背包規劃</span></button>
 <button aria-label="倉庫規劃" class="nav-link" data-page="stash" title="倉庫規劃" type="button"><svg><use href="#i-box"></use></svg><span data-i18n="倉庫規劃">倉庫規劃</span></button>
+<button aria-label="已儲存資料" class="nav-link" data-left-view="memories" id="savedMemoryNav" title="已儲存資料" type="button"><svg><use href="#i-copy"></use></svg><span data-i18n="已儲存資料">已儲存資料</span><b class="saved-memory-badge" id="savedMemoryBadge">0</b></button>
 </nav><button aria-label="切換語言" class="nav-link lang-switch" id="langToggle" title="切換語言 / Switch language" type="button"><svg><use href="#i-globe"></use></svg><span data-i18n="中文 / English">中文 / English</span><b class="lang-badge" id="langBadge">中</b></button>
 <div class="side-bottom"><button aria-label="收納設定" class="nav-link" data-page="settings" id="quickSettingsBtn" title="收納設定" type="button"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m9 3-1 3-3 1-2 3 2 2-2 2 2 3 3 1 1 3h6l1-3 3-1 2-3-2-2 2-2-2-3-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></svg><span data-i18n="收納設定">收納設定</span></button></div>
 </aside>
 <button aria-label="關閉側邊欄" class="side-scrim" hidden="" id="sideScrim" type="button"></button>
 <main class="main">
 <div class="content">
-<section aria-label="收納工作台" class="page page-workspace" id="workspacePage">
+<section aria-label="出征背包規劃" class="page page-workspace" id="workspacePage">
 <div class="toolbar"><div class="toolbar-group"><button class="btn" id="customBtn"><svg><use href="#i-plus"></use></svg><span data-i18n="自訂裝備">自訂裝備</span></button><button class="btn btn-ghost" data-i18n="清空數量" id="clearBtn">清空數量</button><button aria-label="復原清空數量" class="btn btn-undo" id="undoClearBtn" title="復原清空數量" type="button" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 1 1 2 9M4 10V4M4 10h6"/></svg></button></div><div class="toolbar-group"><button class="btn btn-primary" id="saveConfigBtn" type="button" data-i18n="儲存目前配置">儲存目前配置</button></div></div>
 <div class="layout" id="workspaceLayout">
 <section class="panel inventory-panel" id="inventory"><div class="panel-head"><div><div class="panel-title" data-i18n="你的裝備清單">你的裝備清單</div><div class="panel-desc" data-i18n="點選 ＋ / －，建立目前持有的裝備數量">點選 ＋ / －，建立目前持有的裝備數量</div></div><div class="count-chip" id="ownedCount">0 ITEMS</div></div>
-<div aria-label="裝備清單與本機記憶" class="inventory-view-tabs" role="tablist">
-<button aria-selected="true" class="inventory-view-tab active" data-left-view="inventory" role="tab" type="button" data-i18n="裝備清單">裝備清單</button>
-<button aria-selected="false" class="inventory-view-tab" data-left-view="memories" role="tab" type="button"><span data-i18n="已儲存資料">已儲存資料</span><span class="saved-memory-badge" id="savedMemoryBadge">0</span></button>
-</div>
 <div class="inventory-view" id="inventoryView">
 <div class="inventory-search"><label class="searchbox"><svg><use href="#i-search"></use></svg><input aria-label="搜尋裝備" autocomplete="off" data-i18n-placeholder="搜尋名稱、型號，例如：Scav、MPPV" id="search" placeholder="搜尋名稱、型號，例如：Scav、MPPV" type="search"/><span style="font:11px var(--mono);color:#6b7568">/</span></label></div>
 <div aria-label="裝備類型" class="tabs" role="tablist"><button aria-selected="true" class="tab active" data-i18n="全部裝備" data-tab="all" role="tab">全部裝備</button><button aria-selected="false" class="tab" data-i18n="背包" data-tab="bag" role="tab">背包</button><button aria-selected="false" class="tab" data-i18n="彈掛" data-tab="rig" role="tab">彈掛</button></div>
