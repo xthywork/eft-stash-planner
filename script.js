@@ -218,34 +218,28 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{sta
 $('search').addEventListener('input',e=>{state.query=e.target.value;renderCatalog()});$('onlyOwned').addEventListener('change',e=>{state.onlyOwned=e.target.checked;renderCatalog()});
 $('target').addEventListener('change',e=>{state.target=e.target.value;changed()});$('depth').value=String(state.depth);$('depth').addEventListener('change',e=>{state.depth=Number(e.target.value);changed()});$('rotate').checked=state.rotate;$('rotate').addEventListener('change',e=>{state.rotate=e.target.checked;changed()});$('mergeBags').checked=state.mergeBags;$('mergeBags').addEventListener('change',e=>{state.mergeBags=e.target.checked;persist();renderCatalog();$('itemList').scrollTop=0});
 // Three-minute undo for Clear all. Session storage keeps the option after an accidental refresh.
-const UNDO_KEY='stash-lab-clear-undo-v6',UNDO_WINDOW=180000;
-let clearUndo=null,clearUndoInterval=null;
-try{const savedUndo=JSON.parse(sessionStorage.getItem(UNDO_KEY)||'null');if(savedUndo&&savedUndo.expires>Date.now()&&savedUndo.qty&&typeof savedUndo.qty==='object')clearUndo=savedUndo}catch(e){}
+const UNDO_KEY='stash-lab-clear-undo-v6';
+let clearUndo=null;
+try{const savedUndo=JSON.parse(sessionStorage.getItem(UNDO_KEY)||'null');if(savedUndo&&savedUndo.qty&&typeof savedUndo.qty==='object')clearUndo=savedUndo}catch(e){}
 function refreshClearUndo(){
- if(clearUndo&&Date.now()>=clearUndo.expires){clearUndo=null;try{sessionStorage.removeItem(UNDO_KEY)}catch(e){}}
  $('undoClearBtn').hidden=!clearUndo;
- if(!clearUndo){clearInterval(clearUndoInterval);clearUndoInterval=null;return}
- $('undoClearText').textContent=t('復原清除','Undo clear');
- const sec=Math.max(0,Math.ceil((clearUndo.expires-Date.now())/1000));
- $('undoCountdown').textContent=`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
- $('undoClearBtn').title=t('在清空後 3 分鐘內還原裝備數量','Restore inventory quantities within 3 minutes');
- if(!clearUndoInterval)clearUndoInterval=setInterval(refreshClearUndo,1000);
+ const label=t('復原清空數量','Undo cleared quantities');$('undoClearBtn').title=label;$('undoClearBtn').setAttribute('aria-label',label);
 }
 $('clearBtn').addEventListener('click',()=>{
  stopQuantityHold();
  if(!count()&&state.target==='auto'){toast(t('清單已是空的','Inventory is already empty'));return}
- clearUndo={qty:{...state.qty},target:state.target,expires:Date.now()+UNDO_WINDOW};
+ clearUndo={qty:{...state.qty},target:state.target};
  try{sessionStorage.setItem(UNDO_KEY,JSON.stringify(clearUndo))}catch(e){}
  state.qty={};state.target='auto';changed();refreshClearUndo();
- toast(t('已清空；3 分鐘內可復原','Cleared. Undo available for 3 minutes'));
+ toast(t('已清空數量','Quantities cleared'));
 });
 $('undoClearBtn').addEventListener('click',()=>{
- if(!clearUndo||Date.now()>=clearUndo.expires){refreshClearUndo();return}
+ if(!clearUndo){refreshClearUndo();return}
  state.qty={...clearUndo.qty};state.target=clearUndo.target||'auto';
  clearUndo=null;try{sessionStorage.removeItem(UNDO_KEY)}catch(e){}
  refreshClearUndo();changed();toast(t('已還原清空前的裝備數量','Previous quantities restored'));
 });
-$('demoBtn').addEventListener('click',()=>{state.qty={...SAMPLE};state.target='auto';changed();toast(t('已載入示範配置','Example loaded'))});$('quickSettingsBtn').addEventListener('click',()=>switchPage('settings'));$('backWorkspaceBtn').addEventListener('click',()=>switchPage(state.mode));$('settingsScrim').addEventListener('click',()=>switchPage(state.mode));function runAndShow(){plan();switchPage(state.mode);$('result').scrollTop=0;toast(t('收納方案已更新','Plan updated'))}$('runBtn').addEventListener('click',runAndShow);$('runQuickBtn').addEventListener('click',runAndShow);
+$('demoBtn').addEventListener('click',()=>{state.qty={...SAMPLE};state.target='auto';changed();toast(t('已載入示範配置','Example loaded'))});$('backWorkspaceBtn').addEventListener('click',()=>switchPage(state.mode));$('settingsScrim').addEventListener('click',()=>switchPage(state.mode));
 const appShell=$('appShell');const smallScreen=()=>false;
 let savedCollapse=null;try{savedCollapse=localStorage.getItem('stash-lab-sidebar-collapsed')}catch(e){}let sidebarCollapsed=smallScreen()?true:savedCollapse==='true';
 function setSidebarCollapsed(collapsed,save=true){sidebarCollapsed=Boolean(collapsed);appShell.classList.toggle('sidebar-collapsed',sidebarCollapsed);$('sidebarToggle').setAttribute('aria-expanded',String(!sidebarCollapsed));$('sidebarToggle').setAttribute('aria-label',sidebarCollapsed?'展開側邊欄':'收合側邊欄');$('sideScrim').hidden=sidebarCollapsed||!smallScreen();if(save){try{localStorage.setItem('stash-lab-sidebar-collapsed',String(sidebarCollapsed))}catch(e){}}requestAnimationFrame(renderGrid)}
