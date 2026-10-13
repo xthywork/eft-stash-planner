@@ -231,13 +231,13 @@ html,body{min-width:1040px;overflow:hidden}
 
 
 
-/* Settings open as a focused left drawer over the live workspace. */
+/* Settings open as a focused right drawer over the live workspace. */
 .page-settings[hidden]{display:none!important}
 .page-settings:not([hidden]){
- position:fixed;inset:0 auto 0 0;z-index:120;
+ position:fixed;inset:0 0 0 auto;z-index:120;
  width:min(480px,calc(100vw - 32px));height:100vh;height:100dvh;max-height:100dvh;
  padding:0 20px 24px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
- background:var(--bg);border-right:1px solid #505744;box-shadow:22px 0 60px #0009;
+ background:var(--bg);border-left:1px solid #505744;box-shadow:-22px 0 60px #0009;
  scrollbar-color:#465341 transparent;scrollbar-width:thin;
  animation:settings-drawer-in .18s ease-out both;
 }
@@ -250,7 +250,7 @@ html,body{min-width:1040px;overflow:hidden}
 .page-settings .settings{padding:20px 18px}
 .page-settings .stash-settings{padding:20px 18px}
 .page-settings .data-panel,.page-settings .help{padding:20px 18px}
-@keyframes settings-drawer-in{from{opacity:.7;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes settings-drawer-in{from{opacity:.7;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
 @media(prefers-reduced-motion:reduce){.page-settings:not([hidden]){animation:none}}
 
 
