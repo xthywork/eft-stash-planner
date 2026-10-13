@@ -486,21 +486,25 @@ $('previewPath').addEventListener('wheel',e=>{
  e.preventDefault();nav.scrollLeft+=amount;
 },{passive:false});
 function xrayGeometry(node){const spaces=node.spaces||[];return {width:Math.max(1,spaces.reduce((sum,sp)=>sum+sp.w+.35,0)-.35),height:Math.max(1,...spaces.map(sp=>sp.h))}}
-function renderXrayNode(node,depth=0,frame='',rotated=false){
- const g=xrayGeometry(node);let offset=0;
- const content=(node.spaces||[]).map((sp,ci)=>{
+function renderXrayNode(node,depth=0,frame='',angle=0){
+ const g=xrayGeometry(node),quarter=angle%180!==0;
+ const width=quarter?g.height:g.width,height=quarter?g.width:g.height;
+ const transform=angle===90?`translate(${g.height},0) rotate(90)`:angle===180?`translate(${g.width},${g.height}) rotate(180)`:angle===270?`translate(0,${g.width}) rotate(270)`:'';
+ const mapRect=(x,y,w,h)=>angle===90?{x:g.height-y-h,y:x,w:h,h:w}:angle===180?{x:g.width-x-w,y:g.height-y-h,w,h}:angle===270?{x:y,y:g.width-x-w,w:h,h:w}:{x,y,w,h};
+ let offset=0,grid='',items='';
+ (node.spaces||[]).forEach((sp,ci)=>{
   const x=offset;offset+=sp.w+.35;
-  let grid=`<rect x="${x}" y="0" width="${sp.w}" height="${sp.h}" fill="#18231b" stroke="#718469" stroke-width=".045"/>`;
+  grid+=`<rect x="${x}" y="0" width="${sp.w}" height="${sp.h}" fill="#18231b" stroke="#718469" stroke-width=".045"/>`;
   for(let col=1;col<sp.w;col++)grid+=`<path d="M${x+col} 0V${sp.h}" stroke="#53634d" stroke-width=".025"/>`;
   for(let row=1;row<sp.h;row++)grid+=`<path d="M${x} ${row}H${x+sp.w}" stroke="#53634d" stroke-width=".025"/>`;
-  const items=(node.children||[]).filter(child=>child.location?.ci===ci).map(child=>{
-   const p=child.location,px=x+p.x,py=p.y,bag=child.cat==='bag';
-   let inside='';
-   if(bag&&child.spaces?.length&&depth<8){inside=renderXrayNode(child,depth+1,`x="${px+.08}" y="${py+.3}" width="${Math.max(.05,p.w-.16)}" height="${Math.max(.05,p.h-.38)}"`,Boolean(p.rot))}
-   return `<g><title>${esc(itemName(child))} · ${p.w}×${p.h}</title><rect x="${px+.025}" y="${py+.025}" width="${Math.max(.05,p.w-.05)}" height="${Math.max(.05,p.h-.05)}" fill="${bag?'#574a2e':'#36554a'}" stroke="${bag?'#d9b47a':'#92b5a3'}" stroke-width=".055"/><svg x="${px+.06}" y="${py+.04}" width="${Math.max(.05,p.w-.12)}" height=".23" overflow="hidden"><text x="0" y=".19" font-size=".2" fill="#fff0cd">${esc(itemName(child))}</text></svg>${inside}</g>`;
-  }).join('');return grid+items;
- }).join('');
- return `<svg ${frame||'class="xray-root" width="100%"'} viewBox="0 0 ${rotated?g.height:g.width} ${rotated?g.width:g.height}" preserveAspectRatio="xMidYMid meet" overflow="hidden" xmlns="http://www.w3.org/2000/svg" style="overflow:hidden">${rotated?`<g transform="translate(${g.height},0) rotate(90)">${content}</g>`:content}</svg>`;
+  items+=(node.children||[]).filter(child=>child.location?.ci===ci).map(child=>{
+   const p=child.location,r=mapRect(x+p.x,p.y,p.w,p.h),bag=child.cat==='bag';let inside='';
+   if(bag&&child.spaces?.length&&depth<8)inside=renderXrayNode(child,depth+1,`x="${r.x+.08}" y="${r.y+.3}" width="${Math.max(.05,r.w-.16)}" height="${Math.max(.05,r.h-.38)}"`,(angle+(p.rot?90:0))%360);
+   return `<g><title>${esc(itemName(child))} · ${p.w}×${p.h}</title><rect x="${r.x+.025}" y="${r.y+.025}" width="${Math.max(.05,r.w-.05)}" height="${Math.max(.05,r.h-.05)}" fill="${bag?'#574a2e':'#36554a'}" stroke="${bag?'#d9b47a':'#92b5a3'}" stroke-width=".055"/><svg class="xray-label" x="${r.x+.06}" y="${r.y+.04}" width="${Math.max(.05,r.w-.12)}" height=".23" overflow="hidden"><text x="0" y=".19" font-size=".2" fill="#fff0cd">${esc(itemName(child))}</text></svg>${inside}</g>`;
+  }).join('');
+ });
+ // Rotate geometry only; labels are drawn at the top in the final display coordinates.
+ return `<svg ${frame||'class="xray-root" width="100%"'} viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" overflow="hidden" xmlns="http://www.w3.org/2000/svg" style="overflow:hidden">${transform?`<g transform="${transform}">${grid}</g>`:grid}${items}</svg>`;
 }
 $('xrayToggle').addEventListener('click',()=>{xray=!xray;$('xrayToggle').setAttribute('aria-pressed',String(xray));if(xray&&state.solution)state.viewId=state.solution.root.uid;setViewerPane('preview');renderGrid()});
 function renderGrid(){const sol=state.solution,node=getCurrentNode();renderPreviewPath(node);
