@@ -82,7 +82,7 @@ function isCustomValid(x){return x&&/^u-[\w-]{3,40}$/.test(x.id||'')&&typeof x.n
 const MEMORY_KEY='stash-lab-memories-v1';
 function validConfig(d){return d&&d.format==='stash-lab-v1'&&d.qty&&typeof d.qty==='object'&&!Array.isArray(d.qty)&&Array.isArray(d.custom)}
 let memories=[];try{const data=JSON.parse(localStorage.getItem(MEMORY_KEY)||'[]');if(Array.isArray(data))memories=data.filter(m=>m&&typeof m.id==='string'&&typeof m.name==='string'&&validConfig(m.config))}catch(e){}
-let xray=false;
+let xray=false,previewCellSize=24,previewRenderedCell=24,previewMaxCell=24;
 const getAll=()=>[...BASE,...state.custom];const byId=id=>getAll().find(i=>i.id===id);const count=()=>Object.entries(state.qty).reduce((n,[id,q])=>n+(byId(id)?Math.min(100,Math.max(0,Number(q)||0)):0),0);
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({qty:state.qty,custom:state.custom,target:state.target,depth:state.depth,rotate:state.rotate,mergeBags:state.mergeBags,lang:state.lang,mode:state.mode,stashW:state.stashW,stashH:state.stashH}))}catch(e){}}
 let toastTimer=0;function toast(msg){$('toast').textContent=msg;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600)}
@@ -500,30 +500,51 @@ function renderXrayNode(node,depth=0,frame='',angle=0){
   items+=(node.children||[]).filter(child=>child.location?.ci===ci).map(child=>{
    const p=child.location,r=mapRect(x+p.x,p.y,p.w,p.h),bag=child.cat==='bag';let inside='';
    if(bag&&child.spaces?.length&&depth<8)inside=renderXrayNode(child,depth+1,`x="${r.x+.08}" y="${r.y+.3}" width="${Math.max(.05,r.w-.16)}" height="${Math.max(.05,r.h-.38)}"`,(angle+(p.rot?90:0))%360);
-   return `<g><title>${esc(itemName(child))} · ${p.w}×${p.h}</title><rect x="${r.x+.025}" y="${r.y+.025}" width="${Math.max(.05,r.w-.05)}" height="${Math.max(.05,r.h-.05)}" fill="${bag?'#574a2e':'#36554a'}" stroke="${bag?'#d9b47a':'#92b5a3'}" stroke-width=".055"/><svg class="xray-label" x="${r.x+.06}" y="${r.y+.04}" width="${Math.max(.05,r.w-.12)}" height=".23" overflow="hidden"><text x="0" y=".19" font-size=".2" fill="#fff0cd">${esc(itemName(child))}</text></svg>${inside}</g>`;
+   return `<g><title>${esc(itemName(child))} · ${p.w}×${p.h}</title><rect x="${r.x+.025}" y="${r.y+.025}" width="${Math.max(.05,r.w-.05)}" height="${Math.max(.05,r.h-.05)}" fill="${bag?'#574a2e':'#36554a'}" stroke="${bag?'#d9b47a':'#92b5a3'}" stroke-width=".055"/><svg class="xray-label" x="${r.x+.06}" y="${r.y+.04}" width="${Math.max(.05,r.w-.12)}" height=".23" data-label-height="${Math.max(.05,r.h-.08)}" overflow="hidden"><text x="0" y=".19" font-size=".2" fill="#fff0cd">${esc(itemName(child))}</text></svg>${inside}</g>`;
   }).join('');
  });
  // Rotate geometry only; labels are drawn at the top in the final display coordinates.
  return `<svg ${frame||'class="xray-root" width="100%"'} viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" overflow="hidden" xmlns="http://www.w3.org/2000/svg" style="overflow:hidden">${transform?`<g transform="${transform}">${grid}</g>`:grid}${items}</svg>`;
 }
+function updatePreviewZoom(maximum){
+ previewMaxCell=Math.max(.5,maximum);previewRenderedCell=Math.min(previewCellSize,previewMaxCell);
+ $('previewZoomIn').disabled=previewRenderedCell>=previewMaxCell-.05;
+ $('previewZoomOut').disabled=previewRenderedCell<=Math.min(4,previewMaxCell)+.05;
+ return previewRenderedCell;
+}
+function sizeXrayLabels(){
+ document.querySelectorAll('.xray-label').forEach(label=>{
+  const text=label.querySelector('text'),matrix=text.getScreenCTM();if(!matrix)return;
+  const scale=Math.hypot(matrix.a,matrix.b);if(!Number.isFinite(scale)||scale<=0)return;
+  text.setAttribute('font-size',String(12/scale));text.setAttribute('y',String(12/scale));
+  const labelHeight=Math.min(Number(label.dataset.labelHeight),16/scale);label.setAttribute('height',String(labelHeight));
+  const inner=label.nextElementSibling,rect=label.previousElementSibling;
+  if(inner?.tagName.toLowerCase()==='svg'&&rect?.tagName.toLowerCase()==='rect'){
+   const bottom=Number(rect.getAttribute('y'))+Number(rect.getAttribute('height'))-.04;
+   const top=Math.min(bottom-.005,Number(label.getAttribute('y'))+labelHeight+.04);
+   inner.setAttribute('y',String(top));inner.setAttribute('height',String(Math.max(.005,bottom-top)));
+  }
+ });
+}
+$('previewZoomIn').addEventListener('click',()=>{previewCellSize=Math.min(previewMaxCell,previewRenderedCell+4);renderGrid()});
+$('previewZoomOut').addEventListener('click',()=>{previewCellSize=Math.max(Math.min(4,previewMaxCell),previewRenderedCell-4);renderGrid()});
+let previewResizeWidth=0,previewResizeFrame=0;
+new ResizeObserver(entries=>{const width=entries[0].contentRect.width;if(Math.abs(width-previewResizeWidth)<.5)return;previewResizeWidth=width;cancelAnimationFrame(previewResizeFrame);previewResizeFrame=requestAnimationFrame(renderGrid)}).observe(document.querySelector('#previewPane .visual-content'));
 $('xrayToggle').addEventListener('click',()=>{xray=!xray;$('xrayToggle').setAttribute('aria-pressed',String(xray));if(xray&&state.solution)state.viewId=state.solution.root.uid;setViewerPane('preview');renderGrid()});
 function renderGrid(){const sol=state.solution,node=getCurrentNode();renderPreviewPath(node);
  $('previewLegendHint').textContent=xray?t('已展開所有背包層級','All backpack layers are expanded'):t('點擊圖中的背包可進入下一層');
  const shell=$('gridShell');shell.classList.toggle('can-go-back',Boolean(node?.parent));
  if(!sol||!node){shell.innerHTML=`<div class="grid-workspace" style="flex:1;align-items:center;justify-content:center"><span class="muted-small">${t('選擇裝備後顯示預覽','Select items to preview')}</span></div>`;$('fillText').textContent=t('使用率 —','Usage —');$('fillPct').textContent='—';$('fillBar').style.width='0';return}
+ const shellStyle=getComputedStyle(shell),usable=Math.max(1,shell.clientWidth-parseFloat(shellStyle.paddingLeft)-parseFloat(shellStyle.paddingRight));
  if(xray){
-  shell.classList.add('xray-mode');shell.classList.remove('can-go-back');shell.innerHTML=renderXrayNode(node);
+  shell.classList.add('xray-mode');shell.classList.remove('can-go-back');const geometry=xrayGeometry(node),cell=updatePreviewZoom(usable/geometry.width);shell.innerHTML=renderXrayNode(node);const svg=shell.querySelector('.xray-root');svg.style.width=geometry.width*cell+'px';svg.style.height=geometry.height*cell+'px';sizeXrayLabels();
   const capacity=node.spaces.reduce((n,sp)=>n+sp.w*sp.h,0),filled=node.spaces.reduce((n,sp)=>n+sp.cells.filter(Boolean).length,0),usage=capacity?Math.round(filled/capacity*100):0;
   $('fillText').textContent=t('全層透視 · 滑鼠停留查看名稱','All layers · hover for item names');$('fillPct').textContent=usage+'%';$('fillBar').style.width=usage+'%';return;
  }
  shell.classList.remove('xray-mode');
- const usable=Math.max(180,shell.clientWidth-42);
- const stashRoot=state.mode==='stash'&&node.cat==='stash';
+
  const maxW=Math.max(...node.spaces.map(x=>x.w),1);
- const maxH=Math.max(...node.spaces.map(x=>x.h),1);
- const availableH=$('previewPane').clientHeight-105;
- const fitHeight=Math.floor(Math.max(220,availableH)/maxH);
- const cell=stashRoot?Math.min(23,Math.max(13,Math.min(Math.floor(usable/maxW),fitHeight))):Math.min(37,Math.max(16,Math.floor(usable/maxW)));
+ const cell=updatePreviewZoom(Math.max(1,usable-2)/maxW);
  let filled=0,capacity=0;
  const region=node.spaces.map((sp,i)=>{capacity+=sp.w*sp.h;filled+=sp.cells.filter(Boolean).length;const children=node.children.filter(n=>n.location.ci===i);let placements=children.map(child=>{const p=child.location;return `<button class="node-cell ${child.cat==='rig'?'rig':''}" style="grid-column:${p.x+1}/span ${p.w};grid-row:${p.y+1}/span ${p.h}" data-view="${esc(child.uid)}" title="${esc(itemName(child))} (${p.w}×${p.h})"><span class="node-cell-inner"><span class="node-cell-title">${esc(itemName(child).split(' ')[0])} #${esc(child.uid.split('#')[1])}</span>${child.cat==='bag'?'<span class="node-cell-arrow">↗</span>':''}</span><span class="node-cell-dim">${p.w} × ${p.h}</span></button>`}).join('');return `<div class="compartment-holder"><div class="compartment" role="group" aria-label="${t('區域','Compartment')} ${i+1} ${sp.w}×${sp.h}" style="grid-template-columns:repeat(${sp.w},${cell}px);grid-template-rows:repeat(${sp.h},${cell}px)">${Array.from({length:sp.w*sp.h},()=>'<div class="grid-square" aria-hidden="true"></div>').join('')}${placements}</div><div class="compartment-label">${t('區域','COMPARTMENT')} ${String(i+1).padStart(2,'0')}　/　${sp.w} × ${sp.h}</div></div>`}).join('');const usage=capacity?Math.round(filled/capacity*100):0;shell.innerHTML=`<div class="grid-workspace">${region}</div>`;$('fillText').textContent=node.cat==='stash'?t(`倉庫已占用 ${filled} / ${capacity} 格`,`Stash: ${filled} / ${capacity} slots used`):t(`本層已占用 ${filled} / ${capacity} 格`,`This level: ${filled} / ${capacity} slots used`);$('fillPct').textContent=`${usage}%`;$('fillBar').style.width=usage+'%';}
 $('gridShell').addEventListener('click',e=>{if(xray)return;const b=e.target.closest('[data-view]');if(b){const n=allNodes(state.solution?.root).find(n=>n.uid===b.dataset.view);if(n&&n.cat==='bag'){state.viewId=n.uid;renderGrid()}else if(n)toast(t('彈掛無法再容納整件背包','Rigs cannot nest full backpacks'));return}const node=getCurrentNode();if(node?.parent){state.viewId=node.parent.uid;renderGrid()}});
