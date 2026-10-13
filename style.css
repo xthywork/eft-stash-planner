@@ -303,3 +303,17 @@ html,body{min-width:1040px;overflow:hidden}
 .side-bottom .nav-link{margin:0}
 .btn-undo{width:36px;height:36px;min-width:36px;padding:7px}
 .btn-undo svg{width:21px;height:21px}
+
+/* Preview zoom fits the available column and scrolls only vertically. */
+.page-workspace .layout>.visual{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.page-workspace .visual .view-pane:not([hidden]){display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+.page-workspace .visual .visual-content{flex:1;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;padding:12px;scrollbar-width:thin;scrollbar-color:#56654f transparent}
+.page-workspace .visual .grid-shell{width:100%;min-height:0;max-height:none;padding:10px;overflow:hidden;justify-content:flex-start}
+.page-workspace .visual .grid-workspace{max-width:100%;overflow-x:hidden;flex-wrap:wrap}
+.page-workspace .visual .legend,.page-workspace .visual .visual-foot{flex:0 0 auto}
+.page-workspace .visual #stepsPane{overflow-y:auto}
+.preview-zoom{display:flex;align-items:center;gap:4px;margin-left:auto;order:2}
+.preview-zoom .btn{width:30px;height:28px;padding:0;font-size:18px;line-height:1}
+.page-workspace .node-cell-title{font-size:12px;min-width:0}
+.page-workspace .node-cell-dim{font-size:11px;overflow:hidden;white-space:nowrap}
+.xray-label{pointer-events:none;overflow:hidden}
