@@ -1,4 +1,7 @@
 import unittest
+import threading
+from unittest.mock import patch
+from ortools.sat.python import cp_model
 from packing_solver import solve_packing
 
 
@@ -107,5 +110,30 @@ class Packing(unittest.TestCase):
         self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],3)
         self.assertEqual(r['free'],2); self.check_geometry(r['root'])
         self.assertEqual([it['id'] for it in r['unplaced']],['unreachable'])
+
+    def test_resume_hint_and_unlimited(self):
+        data = dict(mode='workspace',target='root',depth=6,rotate=True,
+                    items=[dict(it=root(4,4),qty=1),
+                           dict(it=bag('a',2,2,[(3,3)]),qty=1),
+                           dict(it=bag('b',3,3,[(2,2)]),qty=1)])
+        original_factory = cp_model.CpSolver
+        solvers = []
+        def factory():
+            solver = original_factory(); solvers.append(solver); return solver
+        with patch('packing_solver.cp_model.CpSolver',side_effect=factory):
+            first = solve_packing(data)
+            resumed = solve_packing(data | dict(unlimited=True,resumeHint=first['resumeHint']))
+        self.assertEqual(solvers[0].parameters.max_time_in_seconds,15)
+        self.assertEqual(solvers[1].parameters.max_time_in_seconds,float('inf'))
+        self.assertTrue(resumed['optimal'])
+        self.assertEqual((first['packedBags'],first['free']),
+                         (resumed['packedBags'],resumed['free']))
+        self.check_geometry(resumed['root'])
+
+    def test_cancel_before_search_retains_total_message(self):
+        event = threading.Event(); event.set(); messages = []
+        output = solve_packing({},messages.append,event)
+        self.assertIsNone(output)
+        self.assertEqual(messages[-1],dict(type='complete',result=None,visited=0,reason='stopped'))
 
 if __name__=='__main__': unittest.main()

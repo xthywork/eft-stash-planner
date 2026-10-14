@@ -24,6 +24,13 @@ def coordinate_patterns(entries, index, axis, limit, rotate):
 
 
 def solve_packing(data, notify=lambda message: None, cancel=None):
+    def cancelled_before_search():
+        if cancel is not None and cancel.is_set():
+            notify({'type': 'complete', 'result': None, 'visited': 0, 'reason': 'stopped'})
+            return True
+        return False
+    if cancelled_before_search():
+        return None
     entries = []
     for entry in data['items']:
         for number in range(1, min(100, max(0, int(entry['qty']))) + 1):
@@ -64,6 +71,8 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     candidates = [[] for _ in entries]
     descendants = {}
     for i, (it, _) in enumerate(entries):
+        if cancelled_before_search():
+            return None
         for parent, parent_it in containers:
             if parent == i or parent_it.get('onlyMeds') or (it['cat'] == 'bag' and not parent_it.get('allowBags', True)):
                 continue
@@ -107,6 +116,8 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     rotation, width, height, links, bins = [], [], [], [[] for _ in entries], {}
     link_count = 0
     for i, (it, _) in enumerate(entries):
+        if cancelled_before_search():
+            return None
         r = model.new_bool_var(f'rotate{i}')
         if not data['rotate'] or it['ow'] == it['oh']:
             model.add(r == 0)
@@ -171,7 +182,7 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
                               < y[j] * (maximum + 1) + x[j]).only_enforce_if([link, other])
     # Propagate family ancestry through parent links, including indirect nesting.
     families = {it.get('nestFamily') for it, _ in entries if it.get('blockSameFamily') and it.get('nestFamily')}
-    for family in families:
+    for family in sorted(families):
         flags = {}
         for blocked_only in (False, True):
             flags[blocked_only] = [model.new_bool_var(f'family{family}_{blocked_only}_{i}') for i in range(n)]
@@ -210,9 +221,20 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     rig_weight = len(rig_indices) + 1
     bag_weight = maximum_capacity * rig_weight + len(rig_indices) + 1
     model.maximize(sum(present[i] for i in bag_indices) * bag_weight + free * rig_weight + sum(present[i] for i in rig_indices))
+    # Resume from the last feasible assignment. CP-SAT starts a fresh search;
+    # hints retain the incumbent, not the previous internal search tree.
+    hint = data.get('resumeHint')
+    if isinstance(hint, list) and len(hint) == len(model.proto.variables):
+        valid_hint = all(isinstance(value, int) and any(var.domain[k] <= value <= var.domain[k + 1]
+                         for k in range(0, len(var.domain), 2))
+                         for var, value in zip(model.proto.variables, hint))
+        if valid_hint:
+            for index, value in enumerate(hint):
+                model.add_hint(model.get_int_var_from_proto_index(index), value)
     solver = cp_model.CpSolver()
     solver.parameters.num_search_workers = 2
-    solver.parameters.max_time_in_seconds = 15
+    if not data.get('unlimited', False):
+        solver.parameters.max_time_in_seconds = 15
     solver.parameters.max_memory_in_mb = 256
 
     def result(values, optimal=False, branches=0):
@@ -238,7 +260,9 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         bags = sum(i in nodes for i in bag_indices); rigs = sum(i in nodes for i in rig_indices)
         before = sum(area(it) for it, _ in entries)
         after = (used if stash else area(root_node)) + sum(area(it) for it in missing)
-        return {'root': root_node, 'unplaced': missing, 'included': len(nodes) - (0 if stash else 1), 'total': n, 'packedBags': bags, 'packedRigs': rigs, 'allBagsPacked': bags == len(bag_indices), 'free': values(free), 'used': used, 'before': before, 'after': after, 'saving': before - after, 'optimal': optimal, 'visited': branches}
+        return {'root': root_node, 'unplaced': missing, 'included': len(nodes) - (0 if stash else 1), 'total': n, 'packedBags': bags, 'packedRigs': rigs, 'allBagsPacked': bags == len(bag_indices), 'free': values(free), 'used': used, 'before': before, 'after': after, 'saving': before - after, 'optimal': optimal, 'visited': branches,
+                'resumeHint': [values(model.get_int_var_from_proto_index(index))
+                               for index in range(len(model.proto.variables))]}
 
     class Updates(cp_model.CpSolverSolutionCallback):
         last = 0
@@ -256,14 +280,21 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     if cancel is not None:
         threading.Thread(target=watch_cancel, daemon=True).start()
     try:
+        if cancelled_before_search():
+            return None
         status = solver.solve(model, Updates())
     finally:
         done.set()
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         output = result(solver.value, status == cp_model.OPTIMAL, solver.num_branches)
         output['elapsedSeconds'] = solver.wall_time
-        notify({'type': 'complete', 'result': output, 'visited': solver.num_branches})
+        notify({'type': 'complete', 'result': output, 'visited': solver.num_branches,
+                'reason': 'optimal' if status == cp_model.OPTIMAL else
+                          'stopped' if cancel is not None and cancel.is_set() else 'limit'})
         return output
     if status == cp_model.MODEL_INVALID:
         raise ValueError(solver.solution_info())
-    raise ValueError('尚未找到可行配置，請減少裝備數量或調整收納設定。' if status == cp_model.UNKNOWN else '目前設定無可行配置。')
+    notify({'type': 'complete', 'result': None, 'visited': solver.num_branches,
+            'reason': 'stopped' if cancel is not None and cancel.is_set() else
+                      'limit' if status == cp_model.UNKNOWN else 'infeasible'})
+    return None

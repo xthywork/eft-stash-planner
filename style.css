@@ -320,3 +320,8 @@ html,body{min-width:1040px;overflow:hidden}
 .search-status[hidden]{display:none!important}
 .search-status{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:10px;border:1px solid #655b41;border-radius:5px;color:var(--accent2);font-size:12px;line-height:1.6;flex:0 0 auto}
 .search-status .btn{align-self:flex-start}
+.search-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;color:var(--text);font-size:13px}
+.search-total strong{font:600 16px var(--mono);overflow-wrap:anywhere}
+.analysis-actions{display:flex;flex-wrap:wrap;gap:6px}
+.search-status .analysis-actions .btn{white-space:normal;min-height:34px;font-size:13px;line-height:1.4;text-align:left}
+.analysis-actions .btn:disabled{opacity:.45;cursor:default}

@@ -90,7 +90,7 @@ let toastTimer=0;function toast(msg){$('toast').textContent=msg;$('toast').hidde
 const LANG_MAP={"等級 1 · 10 × 28":"Level 1 · 10 × 28","等級 2 · 10 × 38":"Level 2 · 10 × 38","等級 3 · 10 × 48":"Level 3 · 10 × 48","等級 4 · 10 × 68":"Level 4 · 10 × 68","倉庫規劃":"Stash planner","倉庫尺寸":"Stash size","依照白邊 PvE 的實際倉庫調整":"Match your Standard PvE stash","倉庫預設尺寸":"Stash preset","自訂尺寸":"Custom size","寬":"W","高":"H","出征背包規劃": "Raid backpack planner", "設定與資料": "Settings & data", "中文 / English": "中文 / English", "離線運作": "Offline mode", "資料僅存放在此瀏覽器": "Saved in this browser only", "不存取遊戲或帳號": "No game or account access", "自訂裝備": "Custom item", "清空數量": "Clear all", "收納設定": "Packing settings", "重新計算": "Recalculate", "匯入 JSON": "Import JSON", "下載 JSON": "Download JSON", "關閉": "Close", "你的裝備清單": "Your inventory", "點選 ＋ / －，建立目前持有的裝備數量": "Use + / − to set quantities", "全部裝備": "All items", "背包": "Backpacks", "彈掛": "Rigs", "只顯示已選": "Selected only", "已加入規劃": "Selected items", "只看已選裝備": "Show selected", "設定收納規則 →": "Packing rules →", "收納分析結果": "Packing analysis", "單一主包內已收納": "Packed into one bag", "節省倉庫格數": "Stash slots saved", "背包巢狀層數": "Nesting depth", "等待輸入": "Awaiting items", "預覽": "Preview", "收納步驟": "Packing steps", "選擇裝備後顯示預覽": "Select items to preview", "點擊圖中的背包可進入下一層": "Click a bag to enter · click empty space to go back", "使用率 —": "Usage —", "實際收納步驟": "Packing steps", "按照由內到外的順序操作；先填滿內袋，再將它放入上一層。": "Pack from the innermost bag outwards.", "完成規劃後產生逐步指引": "Steps appear after planning", "無法放入主背包": "Unable to fit in main backpack", "複製規劃清單": "Copy packing plan", "最外層主背包": "Outer backpack", "最大巢狀層數": "Maximum nesting depth", "允許將裝備旋轉 90° 尋找可行擺法": "Allow 90° rotation to find placements", "彈掛視為完整物品放入背包；其內部分隔口袋不會被誤算成可放其他整件裝備的連續空間。": "Rigs are treated as complete items. Separate rig pockets are not treated as one continuous bag.", "開始計算最佳收納方案": "Calculate packing plan", "選項會自動儲存並同步更新規劃結果": "Options are auto-saved and the plan updates automatically", "清單與備份": "Inventory & backup", "讀取範例，或匯入、匯出你的裝備清單與收納設定。": "Load example items or back up your inventory and settings.", "載入示範配置": "Load example", "規劃前需要知道的事": "How the planner works", "01. 計算的是幾何配置": "01. Geometric packing", "同時檢查內外尺寸、獨立收納分區、放入方向與套包層數。這是多輪啟發式搜尋，會盡量容納最多裝備，不保證數學上的全域最優解。": "The planner checks dimensions, separate compartments, rotation, and nesting depth. It uses a multi-pass heuristic and does not guarantee a global optimum.", "02. 遊戲規則優先": "02. In-game rules take priority", "針對官方 PvE 的倉庫套包。某些特殊背包可能另有物品白名單、禁止套包等限制；實際遊戲若拒絕放置，請依遊戲顯示並調整裝備資料。": "Designed for official PvE stash organization. Some bags may have special restrictions; always follow what the game allows.", "03. 資料留在你的電腦": "03. Your data stays local", "整個網頁可離線運作，不連接 EFT、不需要登入。清單存於本機瀏覽器，也可匯出 JSON 備份。格數資料可參照": "The page runs offline without accessing EFT or requiring sign-in. Your inventory stays in local storage and can be exported as JSON. Reference:", "背包資料": "Backpack data", "彈掛資料": "Rig data", "新增自訂裝備": "Add custom item", "遊戲更新後若有新背包或彈掛，可以手動新增尺寸。背包內部支援單一矩形區域；帶有分隔區域的特殊裝備請以內建資料為準。": "Add new bags or rigs manually. Custom bags support one rectangular inner compartment; use built-in data for compartmentalized items.", "裝備名稱": "Item name", "裝備類型": "Item type", "備註（可選）": "Alias (optional)", "外部寬度（格）": "Outer width (slots)", "外部高度（格）": "Outer height (slots)", "背包內部寬度（格）": "Inner width (slots)", "背包內部高度（格）": "Inner height (slots)", "允許其他背包放入此背包": "Allow other bags inside", "取消": "Cancel", "新增至裝備庫": "Add to inventory", "自動選擇最佳主背包": "Auto-select outer bag", "2 層": "2 levels", "3 層": "3 levels", "4 層": "4 levels", "5 層": "5 levels", "6 層": "6 levels", "7 層（預設）": "7 levels (default)","6 層（建議）": "6 levels (recommended)","遊戲規則：黑色與迷彩 Takedown 視為同款，禁止互相套包；Pillbox 與醫療專用背包不能裝其他背包。套包層數保守限制為 6 層。":"Game rules: Black and MultiCam Takedown count as the same family and cannot nest into each other. Pillbox and medical-only bags cannot hold backpacks. Nesting is conservatively limited to 6 levels.", "搜尋名稱、型號，例如：Scav、MPPV": "Search name or model (e.g. Scav, MPPV)", "例如：我的特殊背包": "e.g. My custom backpack", "英文名稱 / 型號": "English name / model", "區域": "Compartment", "格": "slots", "口袋": "pockets"};
 Object.assign(LANG_MAP,{
  "整個網頁可離線運作，不連接 EFT、不需要登入。自訂裝備與目前配置會保存在此瀏覽器，也可從左側管理與匯出。格數資料可參照":"The page runs offline without accessing EFT or requiring sign-in. Custom items and setups stay in this browser. Manage and export them from the left panel. Reference:",
- "停止搜尋":"Stop search","使用 CP-SAT 約束最佳化，同時決定父容器、位置與旋轉，並嚴格檢查尺寸、分區與不重疊。優先放入所有背包，再最大化最外層空格；僅在求解器證明最佳時標示最佳解。":"CP-SAT optimizes containers, positions and rotations together, with strict geometry and non-overlap constraints. Pack all backpacks first, then maximize outer free slots. Optimality is shown only when proven.",
+ "停止搜尋":"Stop search","停止分析":"Stop analysis","繼續分析（無視上限）":"Continue analysis (no time limit)","重新分析":"Restart analysis","累計查找總數":"Total searched","個約束分支":"constraint branches","使用 CP-SAT 約束最佳化，同時決定父容器、位置與旋轉，並嚴格檢查尺寸、分區與不重疊。優先放入所有背包，再最大化最外層空格；僅在求解器證明最佳時標示最佳解。":"CP-SAT optimizes containers, positions and rotations together, with strict geometry and non-overlap constraints. Pack all backpacks first, then maximize outer free slots. Optimality is shown only when proven.",
  "儲存目前配置":"Save current setup","裝備清單":"Inventory","已儲存資料":"Saved setups","瀏覽器記憶":"Browser storage","自訂裝備和配置保存在此瀏覽器":"Custom items and setups stay saved in this browser","匯出目前配置":"Export current setup","匯出所有記憶":"Export all saved data","清除所有記憶":"Clear all saved data","在左側儲存或管理本機配置。":"Save and manage setups in the left panel.","透視所有層":"View all layers",
 
  "依外部長寬與內部容量合併相同背包":"Merge backpacks by footprint and capacity",
@@ -397,31 +397,64 @@ function allNodes(root){const out=[root];for(let i=0;i<out.length;i++)out.push(.
 function maxDepth(root){return Math.max(...allNodes(root).filter(n=>n.cat==='bag').map(n=>n.depth))}
 function getSteps(root){const steps=[];function visit(parent){for(const child of parent.children)visit(child);for(const child of parent.children){const p=child.location;steps.push({from:child,to:parent,loc:p})}}visit(root);return steps}
 function shortNode(n){return `${n.n} [${n.uid.split('#')[1]}]`}
-let packingWorker=null,searchGeneration=0,packingInputKey=null;
+let packingWorker=null,searchGeneration=0,packingInputKey=null,packingVisited=0,packingStopping=false;
 function restorePackingParents(node,parent=null){node.parent=parent;node.children=node.children.map(child=>restorePackingParents(child,node));return node}
-function showSearchStatus(message,running){$('searchStatus').hidden=false;$('searchStatusText').textContent=message;$('cancelSearchBtn').hidden=!running}
-function plan(){
+function showSearchStatus(message,running){
+ $('searchStatus').hidden=false;$('searchStatusText').textContent=message;
+ $('searchTotalCount').textContent=packingVisited.toLocaleString();
+ $('cancelSearchBtn').disabled=!running||packingStopping;
+ $('continueSearchBtn').disabled=running||state.solution?.optimal===true||!count();
+ $('restartSearchBtn').disabled=packingStopping;
+}
+function betterPacking(a,b){
+ if(!b)return true;
+ for(const key of ['packedBags','free','packedRigs']){if(a[key]!==b[key])return a[key]>b[key]}
+ return true;
+}
+function plan(options={}){
  const input={mode:state.mode,target:state.target,depth:state.depth,rotate:state.rotate,stashW:state.stashW,stashH:state.stashH,items:getAll().map(it=>({it,qty:Math.min(100,Math.max(0,Number(state.qty[it.id])||0))})).filter(entry=>entry.qty>0)};
- const inputKey=JSON.stringify(input);if(inputKey===packingInputKey&&(packingWorker||state.solution?.optimal)){renderResult();return}packingInputKey=inputKey;
- packingWorker?.terminate();const generation=++searchGeneration;
- state.solution=null;state.viewId=null;renderResult();
- showSearchStatus(t('正在最佳化收納配置…','Optimizing packing constraints…'),true);
+ const inputKey=JSON.stringify(input),sameInput=inputKey===packingInputKey;
+ if(sameInput&&!options.restart&&!options.unlimited){renderResult();return}
+ const continuing=sameInput&&options.unlimited;
+ if(!continuing){packingVisited=0;state.solution=null;state.viewId=null}
+ const baseVisited=packingVisited;
+ if(continuing&&state.solution?.resumeHint)input.resumeHint=state.solution.resumeHint;
+ input.unlimited=!!options.unlimited;input.requestId=globalThis.crypto?.randomUUID?.()||`analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+ packingInputKey=inputKey;packingWorker?.terminate();const generation=++searchGeneration;packingStopping=false;
+ renderResult();showSearchStatus(options.unlimited?t('持續分析中 · 無時間上限；尚未證明最佳','Analyzing without a time limit; optimality not yet proven'):t('正在分析收納配置…','Analyzing packing constraints…'),true);
  const worker=new Worker('packing-worker.js');packingWorker=worker;
+ function finish(message){packingWorker=null;packingStopping=false;worker.terminate();showSearchStatus(message,false)}
  worker.onmessage=event=>{
-  if(generation!==searchGeneration)return;const message=event.data;
+  if(generation!==searchGeneration||packingWorker!==worker)return;const message=event.data;
+  if(Number.isFinite(message.visited))packingVisited=Math.max(packingVisited,baseVisited+message.visited);
+  $('searchTotalCount').textContent=packingVisited.toLocaleString();
   if(message.type==='solution'||message.type==='complete'){
-   const result=message.result;if(result){result.root=restorePackingParents(result.root);if(!validPacking(result.root,state.depth)){worker.terminate();showSearchStatus(t('搜尋結果未通過幾何驗證','Search result failed geometric validation'),false);return}}
-   state.solution=result;state.viewId=result?.root.uid||null;renderResult();
+   const result=message.result;
+   if(result){
+    result.root=restorePackingParents(result.root);
+    if(!validPacking(result.root,state.depth)){finish(t('分析結果未通過幾何驗證','Analysis result failed geometric validation'));return}
+    if(betterPacking(result,state.solution)){state.solution=result;state.viewId=result.root.uid;renderResult()}
+   }
   }
-  if(message.type==='progress'||message.type==='solution')showSearchStatus(t(`最佳化中 · ${message.visited.toLocaleString()} 個約束分支；尚未證明最佳`,`Optimizing · ${message.visited.toLocaleString()} constraint branches; optimality not yet proven`),true);
-  else if(message.type==='complete'){
-   showSearchStatus(!message.result?t('請先選擇至少一個可用的主背包','Select at least one available outer backpack'):!message.result.optimal?t('求解時間內已找到可行方案，尚未證明最佳；可調整配置後再求解','A feasible plan was found within the solve limit; optimality has not been proven'):message.result.allBagsPacked?t(`最佳解已證明 · 所有背包已放入，最外層剩餘 ${message.result.free} 格`,`Optimal solution proven · all backpacks packed; ${message.result.free} outer slots free`):t('已證明無法放入所有背包；顯示可放入最多背包的最佳方案','Not all backpacks can fit; showing the proven optimal partial plan'),false);worker.terminate();packingWorker=null;
-  }else if(message.type==='error'){showSearchStatus(t('搜尋失敗：','Search failed: ')+message.message,false);worker.terminate();packingWorker=null}
+  if(message.type==='progress'||message.type==='solution'){
+   if(!packingStopping)showSearchStatus(input.unlimited?t('持續分析中 · 無時間上限；尚未證明最佳','Analyzing without a time limit; optimality not yet proven'):t('分析中 · 尚未證明最佳','Analyzing; optimality not yet proven'),true);
+  }else if(message.type==='complete'){
+   const result=state.solution;
+   finish(result?.optimal?(result.allBagsPacked?t(`最佳解已證明 · 所有背包已放入，最外層剩餘 ${result.free} 格`,`Optimal solution proven · all backpacks packed; ${result.free} outer slots free`):t('已證明無法放入所有背包；顯示可放入最多背包的最佳方案','Not all backpacks can fit; showing the proven optimal partial plan')):message.reason==='stopped'?t('分析已停止；保留目前方案與累計查找數，可繼續分析','Analysis stopped; the current plan and total are retained. You can continue.'):message.reason==='infeasible'?t('目前設定無可行配置','No feasible packing with the current settings'):message.reason==='limit'?(input.unlimited?t('本次分析已結束，尚未證明最佳；可繼續分析','Analysis ended without an optimality proof; you can continue'):t('已達分析上限；可按繼續分析解除時間上限','Analysis limit reached; continue to remove the time limit')):t('請先選擇至少一個可用的主背包','Select at least one available outer backpack'));
+  }else if(message.type==='control-error'){
+   packingStopping=false;showSearchStatus(t('停止分析失敗：','Unable to stop analysis: ')+message.message,true);
+  }else if(message.type==='error')finish(t('分析失敗：','Analysis failed: ')+message.message);
  };
- worker.onerror=event=>{if(generation!==searchGeneration)return;showSearchStatus(t('搜尋失敗：','Search failed: ')+event.message,false);worker.terminate();packingWorker=null};
+ worker.onerror=event=>{if(generation===searchGeneration&&packingWorker===worker)finish(t('分析失敗：','Analysis failed: ')+event.message)};
  worker.postMessage(input);
 }
-$('cancelSearchBtn').addEventListener('click',()=>{packingWorker?.terminate();packingWorker=null;searchGeneration++;if(state.solution)state.solution.optimal=false;showSearchStatus(t('搜尋已停止；目前方案尚未證明最佳','Search stopped; current plan is not proven optimal'),false)});
+$('cancelSearchBtn').addEventListener('click',()=>{
+ if(!packingWorker||packingStopping)return;
+ packingStopping=true;showSearchStatus(t('正在停止分析並取得最後查找總數…','Stopping analysis and collecting the final search total…'),true);
+ packingWorker.postMessage({command:'stop'});
+});
+$('continueSearchBtn').addEventListener('click',()=>plan({unlimited:true}));
+$('restartSearchBtn').addEventListener('click',()=>plan({restart:true}));
 function getCurrentNode(){const res=state.solution;if(!res)return null;return allNodes(res.root).find(n=>n.uid===state.viewId)||res.root}
 function renderStashLeftovers(sol){
  const panel=$('stashLeftovers');panel.hidden=state.mode!=='stash';
