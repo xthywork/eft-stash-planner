@@ -292,6 +292,7 @@ html,body{min-width:1040px;overflow:hidden}
 .grid-shell.xray-mode{overflow:hidden;min-width:0;display:flex;align-items:center;justify-content:flex-start}
 .xray-root{display:block;max-width:100%;height:auto;overflow:hidden;flex:0 0 auto;aspect-ratio:auto}
 .xray-root text{font-family:var(--sans);pointer-events:none}
+.xray-bag{cursor:pointer}
 
 /* Bottom settings access remains available with the sidebar collapsed. */
 .sidebar-collapsed .sidebar .side-bottom{display:block;padding:12px 0 0}
