@@ -316,3 +316,7 @@ html,body{min-width:1040px;overflow:hidden}
 
 .sidebar .saved-memory-badge{margin-left:auto}
 .sidebar-collapsed .saved-memory-badge{display:none}
+
+.search-status[hidden]{display:none!important}
+.search-status{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:10px;border:1px solid #655b41;border-radius:5px;color:var(--accent2);font-size:12px;line-height:1.6;flex:0 0 auto}
+.search-status .btn{align-self:flex-start}
