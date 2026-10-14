@@ -2,7 +2,25 @@
 import copy
 import time
 import threading
+from collections import deque
 from ortools.sat.python import cp_model
+
+
+def coordinate_patterns(entries, index, axis, limit, rotate):
+    """Coordinates of a compact packing are sums of other item edges.
+
+    Each item contributes at most one edge, even when it can rotate. This
+    retains a compact representative of every feasible rectangle packing.
+    """
+    sums = {0}
+    for j, (item, _) in enumerate(entries):
+        if j == index:
+            continue
+        edges = {item['ow' if axis == 'x' else 'oh']}
+        if rotate:
+            edges.update((item['ow'], item['oh']))
+        sums |= {s + edge for s in sums for edge in edges if s + edge <= limit}
+    return sorted(sums)
 
 
 def solve_packing(data, notify=lambda message: None, cancel=None):
@@ -14,6 +32,19 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         raise ValueError('單次配置最多支援 150 件裝備，請分批規劃。')
     n = len(entries)
     stash = data['mode'] == 'stash'
+    blocked_families = {it.get('nestFamily') for it, _ in entries
+                        if it.get('nestFamily') and it.get('blockSameFamily')}
+    def equivalence(it):
+        # Names/colors do not affect packing. Preserve distinctions that affect
+        # ancestry restrictions or eligibility to be the selected outer bag.
+        return (it['cat'], it['ow'], it['oh'],
+                tuple((sp['w'], sp['h']) for sp in it['comp']),
+                it.get('allowBags', True), bool(it.get('onlyMeds')),
+                it.get('nestFamily') if it.get('nestFamily') in blocked_families else '',
+                bool(it.get('blockSameFamily')),
+                not stash and (data['target'] == 'auto' or data['target'] == it['id']))
+    entries.sort(key=lambda entry: repr(equivalence(entry[0])))
+    groups = [equivalence(it) for it, _ in entries]
     bag_indices = [i for i, (it, _) in enumerate(entries) if it['cat'] == 'bag']
     rig_indices = [i for i in range(n) if i not in bag_indices]
     if not stash and not bag_indices:
@@ -26,12 +57,53 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     containers = [(i, it) for i, (it, _) in enumerate(entries) if it['cat'] == 'bag']
     if stash:
         containers.append((-1, outer))
-    maximum = max([100] + [max(sp['w'], sp['h']) for _, it in containers for sp in it['comp']])
+    root_candidates = {i for i in bag_indices if not stash
+                       and (data['target'] == 'auto' or data['target'] == entries[i][0]['id'])
+                       and groups[i] not in groups[:i]}
+    # Build the geometric compatibility graph before allocating solver variables.
+    candidates = [[] for _ in entries]
+    descendants = {}
+    for i, (it, _) in enumerate(entries):
+        for parent, parent_it in containers:
+            if parent == i or parent_it.get('onlyMeds') or (it['cat'] == 'bag' and not parent_it.get('allowBags', True)):
+                continue
+            if it['cat'] == 'bag' and it.get('nestFamily') and it.get('nestFamily') == parent_it.get('nestFamily') and (it.get('blockSameFamily') or parent_it.get('blockSameFamily')):
+                continue
+            if parent >= 0 and groups[parent] == groups[i] and parent > i:
+                continue
+            for ci, sp in enumerate(parent_it['comp']):
+                fits = it['ow'] <= sp['w'] and it['oh'] <= sp['h']
+                turned = data['rotate'] and it['oh'] <= sp['w'] and it['ow'] <= sp['h']
+                if fits or turned:
+                    candidates[i].append((parent, ci, sp))
+                    descendants.setdefault(parent, set()).add(i)
+    # A bag that cannot be reached from a legal root cannot participate at all.
+    minimum_depth = {i: 1 for i in root_candidates} if not stash else {-1: 0}
+    queue = deque(minimum_depth)
+    while queue:
+        parent = queue.popleft()
+        d = minimum_depth[parent] + 1
+        if d > data['depth']:
+            continue
+        for child in descendants.get(parent, ()):
+            if child not in minimum_depth:
+                minimum_depth[child] = d
+                queue.append(child)
+    for i in range(n):
+        candidates[i] = [(p, ci, sp) for p, ci, sp in candidates[i]
+                         if p in minimum_depth and minimum_depth[p] < data['depth']
+                         and i in minimum_depth]
+    maximum = max([1] + [max(sp['w'], sp['h']) for _, it in containers for sp in it['comp']])
     present = [model.new_bool_var(f'present{i}') for i in range(n)]
     roots = [model.new_bool_var(f'root{i}') for i in range(n)]
     depth = [model.new_int_var(0, data['depth'], f'depth{i}') for i in range(n)]
-    x = [model.new_int_var(0, maximum, f'x{i}') for i in range(n)]
-    y = [model.new_int_var(0, maximum, f'y{i}') for i in range(n)]
+    x, y = [], []
+    for i, (it, _) in enumerate(entries):
+        for axis, variables, edge in [('x', x, 'w'), ('y', y, 'h')]:
+            minimum_edge = min(it['ow'], it['oh']) if data['rotate'] else it['ow' if axis == 'x' else 'oh']
+            limit = max([0] + [sp[edge] - minimum_edge for _, _, sp in candidates[i]])
+            patterns = coordinate_patterns(entries, i, axis, limit, data['rotate'])
+            variables.append(model.new_int_var_from_domain(cp_model.Domain.from_values(patterns), f'{axis}{i}'))
     rotation, width, height, links, bins = [], [], [], [[] for _ in entries], {}
     link_count = 0
     for i, (it, _) in enumerate(entries):
@@ -44,51 +116,59 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         model.add(w == it['ow'] + (it['oh'] - it['ow']) * r)
         model.add(h == it['oh'] + (it['ow'] - it['oh']) * r)
         width.append(w); height.append(h)
-        allowed_root = not stash and i in bag_indices and (data['target'] == 'auto' or data['target'] == it['id'])
-        # Identical copies are interchangeable: only their first copy can be the root.
-        if not allowed_root or any(entries[j][0]['id'] == it['id'] for j in range(i)):
+        if i not in root_candidates:
             model.add(roots[i] == 0)
         model.add(depth[i] == 1).only_enforce_if(roots[i])
         model.add(r == 0).only_enforce_if(roots[i])
         model.add(depth[i] == 0).only_enforce_if(present[i].Not())
-        for parent, parent_it in containers:
-            if parent == i or parent_it.get('onlyMeds') or (it['cat'] == 'bag' and not parent_it.get('allowBags', True)):
-                continue
-            if it['cat'] == 'bag' and it.get('nestFamily') and it.get('nestFamily') == parent_it.get('nestFamily') and (it.get('blockSameFamily') or parent_it.get('blockSameFamily')):
-                continue
-            if parent >= 0 and parent_it['id'] == it['id'] and parent > i:
-                continue  # relabel identical nested copies parent-first
-            for ci, sp in enumerate(parent_it['comp']):
-                fits = it['ow'] <= sp['w'] and it['oh'] <= sp['h']
-                fits_rotated = data['rotate'] and it['oh'] <= sp['w'] and it['ow'] <= sp['h']
-                if not (fits or fits_rotated):
-                    continue
-                link_count += 1
-                if link_count > 20_000:
-                    raise ValueError('配置的候選容器關係過多，請分批規劃。')
-                p = model.new_bool_var(f'link{i}_{parent}_{ci}')
-                links[i].append((parent, ci, p))
-                model.add(x[i] + w <= sp['w']).only_enforce_if(p)
-                model.add(y[i] + h <= sp['h']).only_enforce_if(p)
-                if parent >= 0:
-                    model.add(p <= present[parent])
-                    model.add(depth[i] == depth[parent] + 1).only_enforce_if(p)
-                else:
-                    model.add(depth[i] == 1).only_enforce_if(p)
-                ex = model.new_int_var(0, maximum * 2, f'ex{i}_{parent}_{ci}')
-                ey = model.new_int_var(0, maximum * 2, f'ey{i}_{parent}_{ci}')
-                ix = model.new_optional_interval_var(x[i], w, ex, p, f'ix{i}_{parent}_{ci}')
-                iy = model.new_optional_interval_var(y[i], h, ey, p, f'iy{i}_{parent}_{ci}')
-                intervals = bins.setdefault((parent, ci), ([], []))
-                intervals[0].append(ix); intervals[1].append(iy)
+        for flag in [present[i].Not(), roots[i]]:
+            model.add(x[i] == 0).only_enforce_if(flag)
+            model.add(y[i] == 0).only_enforce_if(flag)
+            model.add(r == 0).only_enforce_if(flag)
+        if i in minimum_depth:
+            model.add(depth[i] >= minimum_depth[i]).only_enforce_if(present[i])
+        # Endpoints belong to the item, not to each of its candidate containers.
+        ex = model.new_int_var(0, maximum + max(it['ow'], it['oh']), f'ex{i}')
+        ey = model.new_int_var(0, maximum + max(it['ow'], it['oh']), f'ey{i}')
+        model.add(ex == x[i] + w); model.add(ey == y[i] + h)
+        for parent, ci, sp in candidates[i]:
+            link_count += 1
+            if link_count > 20_000:
+                raise ValueError('配置的候選容器關係過多，請分批規劃。')
+            p = model.new_bool_var(f'link{i}_{parent}_{ci}')
+            links[i].append((parent, ci, p))
+            model.add(x[i] + w <= sp['w']).only_enforce_if(p)
+            model.add(y[i] + h <= sp['h']).only_enforce_if(p)
+            if parent >= 0:
+                model.add(p <= present[parent])
+                model.add(depth[i] == depth[parent] + 1).only_enforce_if(p)
+            else:
+                model.add(depth[i] == 1).only_enforce_if(p)
+            ix = model.new_optional_interval_var(x[i], w, ex, p, f'ix{i}_{parent}_{ci}')
+            iy = model.new_optional_interval_var(y[i], h, ey, p, f'iy{i}_{parent}_{ci}')
+            intervals = bins.setdefault((parent, ci), ([], [], []))
+            intervals[0].append(ix); intervals[1].append(iy)
+            intervals[2].append((i, p))
         model.add(sum(p for _, _, p in links[i]) + roots[i] == present[i])
-        if i and entries[i - 1][0]['id'] == it['id']:
+        if i and groups[i - 1] == groups[i]:
             model.add(present[i - 1] >= present[i])
             model.add(depth[i - 1] <= depth[i]).only_enforce_if(present[i])
     if not stash:
         model.add(sum(roots) == 1)
-    for ix, iy in bins.values():
+    for (parent, ci), (ix, iy, members) in bins.items():
         model.add_no_overlap_2d(ix, iy)
+        sp = outer['comp'][ci] if parent == -1 else entries[parent][0]['comp'][ci]
+        # A cheap linear bound rejects impossible container structures before
+        # spending effort on their coordinates.
+        model.add(sum(area(entries[i][0]) * link for i, link in members)
+                  <= sp['w'] * sp['h'] * (1 if parent == -1 else present[parent]))
+        # Identical siblings have one canonical spatial order. Ancestors remain
+        # unrestricted; their labels are already ordered by depth above.
+        for pos, (i, link) in enumerate(members):
+            for j, other in members[pos + 1:]:
+                if groups[i] == groups[j]:
+                    model.add(y[i] * (maximum + 1) + x[i]
+                              < y[j] * (maximum + 1) + x[j]).only_enforce_if([link, other])
     # Propagate family ancestry through parent links, including indirect nesting.
     families = {it.get('nestFamily') for it, _ in entries if it.get('blockSameFamily') and it.get('nestFamily')}
     for family in families:
@@ -115,13 +195,18 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         for parent, _, link in links[i]:
             if parent == -1:
                 top_area.append(area(it) * link)
-            else:
+            elif parent in root_candidates:
                 top = model.new_bool_var(f'top{i}_{parent}_{len(top_area)}')
                 model.add(top <= link); model.add(top <= roots[parent]); model.add(top >= link + roots[parent] - 1)
                 top_area.append(area(it) * top)
-    maximum_capacity = cap(outer) if stash else max(cap(entries[i][0]) for i in bag_indices)
+    maximum_capacity = cap(outer) if stash else max([0] + [cap(entries[i][0]) for i in root_candidates])
     free = model.new_int_var(0, maximum_capacity, 'free')
     model.add(free == (cap(outer) if stash else sum(cap(it) * roots[i] for i, (it, _) in enumerate(entries))) - sum(top_area))
+    # Sum of all compartment free space bounds outer free space. This propagates
+    # the objective through the whole nesting tree without choosing coordinates.
+    model.add(free <= (cap(outer) if stash else 0)
+              + sum(cap(entries[i][0]) * present[i] for i in bag_indices)
+              - sum(area(it) * (present[i] - roots[i]) for i, (it, _) in enumerate(entries)))
     rig_weight = len(rig_indices) + 1
     bag_weight = maximum_capacity * rig_weight + len(rig_indices) + 1
     model.maximize(sum(present[i] for i in bag_indices) * bag_weight + free * rig_weight + sum(present[i] for i in rig_indices))

@@ -83,4 +83,29 @@ class Packing(unittest.TestCase):
         r=solve([(bag('a',1,1,[(2,2)]),1),(bag('b',2,2,[(1,1)]),1)],mode='stash',stashW=3,stashH=3)
         self.assertTrue(r['allBagsPacked']); self.assertEqual(r['free'],8); self.check_geometry(r['root'])
 
+    def test_equivalent_variants_auto_root(self):
+        items = [(bag('variant'+str(i),4,5,[(4,5)]),1) for i in range(8)]
+        r = solve(items,target='auto',rotate=True)
+        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],6)
+        self.assertEqual(r['free'],0); self.check_geometry(r['root'])
+        self.assertLess(r['visited'],1000)
+        self.assertLess(r['elapsedSeconds'],2)
+        def ids(node):
+            return [node['id']] + [name for child in node['children'] for name in ids(child)]
+        self.assertCountEqual(ids(r['root']) + [it['id'] for it in r['unplaced']],
+                              [it['id'] for it, _ in items])
+        # A specifically requested model must not be replaced by its equivalent.
+        r = solve(items,target='variant7',rotate=True)
+        self.assertEqual(r['root']['id'],'variant7')
+        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],6)
+
+    def test_unreachable_containers(self):
+        # The large bag could hold both small bags, but cannot reach the root.
+        items = [(root(2,2),1),(bag('unreachable',5,5,[(8,8)]),1),
+                 (bag('small',1,1),2)]
+        r = solve(items)
+        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],3)
+        self.assertEqual(r['free'],2); self.check_geometry(r['root'])
+        self.assertEqual([it['id'] for it in r['unplaced']],['unreachable'])
+
 if __name__=='__main__': unittest.main()
