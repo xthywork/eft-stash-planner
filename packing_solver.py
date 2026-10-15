@@ -1,4 +1,4 @@
-"""CP-SAT geometric packing, with lexicographic bag/free-space/rig objectives."""
+"""CP-SAT geometric packing, with lexicographic backpack-only stash objectives."""
 import copy
 import time
 import threading
@@ -33,40 +33,41 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         return None
     entries = []
     for entry in data['items']:
+        # Ignore legacy/non-backpack entries before quantities, limits or variables.
+        if entry.get('it', {}).get('cat') != 'bag':
+            continue
         for number in range(1, min(100, max(0, int(entry['qty']))) + 1):
             entries.append((entry['it'], f"{entry['it']['id']}#{number}"))
     if len(entries) > 150:
-        raise ValueError('單次配置最多支援 150 件裝備，請分批規劃。')
+        raise ValueError('單次配置最多支援 150 個背包，請分批規劃。')
     n = len(entries)
-    stash = data['mode'] == 'stash'
     blocked_families = {it.get('nestFamily') for it, _ in entries
                         if it.get('nestFamily') and it.get('blockSameFamily')}
     def equivalence(it):
         # Names/colors do not affect packing. Preserve distinctions that affect
-        # ancestry restrictions or eligibility to be the selected outer bag.
-        return (it['cat'], it['ow'], it['oh'],
+        # ancestry restrictions.
+        return (it['ow'], it['oh'],
                 tuple((sp['w'], sp['h']) for sp in it['comp']),
                 it.get('allowBags', True), bool(it.get('onlyMeds')),
                 it.get('nestFamily') if it.get('nestFamily') in blocked_families else '',
-                bool(it.get('blockSameFamily')),
-                not stash and (data['target'] == 'auto' or data['target'] == it['id']))
+                bool(it.get('blockSameFamily')))
     entries.sort(key=lambda entry: repr(equivalence(entry[0])))
     groups = [equivalence(it) for it, _ in entries]
-    bag_indices = [i for i, (it, _) in enumerate(entries) if it['cat'] == 'bag']
-    rig_indices = [i for i in range(n) if i not in bag_indices]
-    if not stash and not bag_indices:
-        notify({'type': 'complete', 'result': None, 'visited': 0})
-        return None
-    model = cp_model.CpModel()
     cap = lambda it: sum(sp['w'] * sp['h'] for sp in it['comp'])
     area = lambda it: it['ow'] * it['oh']
     outer = {'id': 'stash', 'n': '倉庫', 'en': 'Stash', 'cat': 'stash', 'ow': data.get('stashW', 10), 'oh': data.get('stashH', 28), 'comp': [{'w': data.get('stashW', 10), 'h': data.get('stashH', 28)}], 'allowBags': True}
-    containers = [(i, it) for i, (it, _) in enumerate(entries) if it['cat'] == 'bag']
-    if stash:
-        containers.append((-1, outer))
-    root_candidates = {i for i in bag_indices if not stash
-                       and (data['target'] == 'auto' or data['target'] == entries[i][0]['id'])
-                       and groups[i] not in groups[:i]}
+    if not n:
+        root = {**outer, 'uid': 'stash#1', 'depth': 0, 'location': None,
+                'children': [], 'spaces': [{**sp, 'cells': [None] * (sp['w'] * sp['h'])} for sp in outer['comp']]}
+        output = dict(root=root, unplaced=[], included=0, total=0, packedBags=0,
+                      allBagsPacked=True, free=cap(outer), used=0, before=0, after=0,
+                      saving=0, optimal=True, visited=0, elapsedSeconds=0, resumeHint=[])
+        notify(dict(type='complete', result=output, visited=0, reason='optimal'))
+        return output
+    model = cp_model.CpModel()
+    containers = [(i, it) for i, (it, _) in enumerate(entries)
+                  if it.get('allowBags', True) and not it.get('onlyMeds') and it['comp']]
+    containers.append((-1, outer))
     # Build the geometric compatibility graph before allocating solver variables.
     candidates = [[] for _ in entries]
     descendants = {}
@@ -74,9 +75,9 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         if cancelled_before_search():
             return None
         for parent, parent_it in containers:
-            if parent == i or parent_it.get('onlyMeds') or (it['cat'] == 'bag' and not parent_it.get('allowBags', True)):
+            if parent == i:
                 continue
-            if it['cat'] == 'bag' and it.get('nestFamily') and it.get('nestFamily') == parent_it.get('nestFamily') and (it.get('blockSameFamily') or parent_it.get('blockSameFamily')):
+            if it.get('nestFamily') and it.get('nestFamily') == parent_it.get('nestFamily') and (it.get('blockSameFamily') or parent_it.get('blockSameFamily')):
                 continue
             if parent >= 0 and groups[parent] == groups[i] and parent > i:
                 continue
@@ -86,8 +87,8 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
                 if fits or turned:
                     candidates[i].append((parent, ci, sp))
                     descendants.setdefault(parent, set()).add(i)
-    # A bag that cannot be reached from a legal root cannot participate at all.
-    minimum_depth = {i: 1 for i in root_candidates} if not stash else {-1: 0}
+    # A bag that cannot be reached from a stash cannot participate at all.
+    minimum_depth = {-1: 0}
     queue = deque(minimum_depth)
     while queue:
         parent = queue.popleft()
@@ -104,7 +105,6 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
                          and i in minimum_depth]
     maximum = max([1] + [max(sp['w'], sp['h']) for _, it in containers for sp in it['comp']])
     present = [model.new_bool_var(f'present{i}') for i in range(n)]
-    roots = [model.new_bool_var(f'root{i}') for i in range(n)]
     depth = [model.new_int_var(0, data['depth'], f'depth{i}') for i in range(n)]
     x, y = [], []
     for i, (it, _) in enumerate(entries):
@@ -127,15 +127,10 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         model.add(w == it['ow'] + (it['oh'] - it['ow']) * r)
         model.add(h == it['oh'] + (it['ow'] - it['oh']) * r)
         width.append(w); height.append(h)
-        if i not in root_candidates:
-            model.add(roots[i] == 0)
-        model.add(depth[i] == 1).only_enforce_if(roots[i])
-        model.add(r == 0).only_enforce_if(roots[i])
         model.add(depth[i] == 0).only_enforce_if(present[i].Not())
-        for flag in [present[i].Not(), roots[i]]:
-            model.add(x[i] == 0).only_enforce_if(flag)
-            model.add(y[i] == 0).only_enforce_if(flag)
-            model.add(r == 0).only_enforce_if(flag)
+        model.add(x[i] == 0).only_enforce_if(present[i].Not())
+        model.add(y[i] == 0).only_enforce_if(present[i].Not())
+        model.add(r == 0).only_enforce_if(present[i].Not())
         if i in minimum_depth:
             model.add(depth[i] >= minimum_depth[i]).only_enforce_if(present[i])
         # Endpoints belong to the item, not to each of its candidate containers.
@@ -160,12 +155,10 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
             intervals = bins.setdefault((parent, ci), ([], [], []))
             intervals[0].append(ix); intervals[1].append(iy)
             intervals[2].append((i, p))
-        model.add(sum(p for _, _, p in links[i]) + roots[i] == present[i])
+        model.add(sum(p for _, _, p in links[i]) == present[i])
         if i and groups[i - 1] == groups[i]:
             model.add(present[i - 1] >= present[i])
             model.add(depth[i - 1] <= depth[i]).only_enforce_if(present[i])
-    if not stash:
-        model.add(sum(roots) == 1)
     for (parent, ci), (ix, iy, members) in bins.items():
         model.add_no_overlap_2d(ix, iy)
         sp = outer['comp'][ci] if parent == -1 else entries[parent][0]['comp'][ci]
@@ -193,34 +186,23 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
                     model.add(flag == present[i])
                 else:
                     model.add(flag == 0).only_enforce_if(present[i].Not())
-                    model.add(flag == 0).only_enforce_if(roots[i])
                     for parent, _, link in links[i]:
                         model.add(flag == (flags[blocked_only][parent] if parent >= 0 else 0)).only_enforce_if(link)
         for i, (it, _) in enumerate(entries):
-            if it['cat'] == 'bag' and it.get('nestFamily') == family:
+            if it.get('nestFamily') == family:
                 for parent, _, link in links[i]:
                     if parent >= 0:
                         model.add(flags[not bool(it.get('blockSameFamily'))][parent] == 0).only_enforce_if(link)
-    top_area = []
-    for i, (it, _) in enumerate(entries):
-        for parent, _, link in links[i]:
-            if parent == -1:
-                top_area.append(area(it) * link)
-            elif parent in root_candidates:
-                top = model.new_bool_var(f'top{i}_{parent}_{len(top_area)}')
-                model.add(top <= link); model.add(top <= roots[parent]); model.add(top >= link + roots[parent] - 1)
-                top_area.append(area(it) * top)
-    maximum_capacity = cap(outer) if stash else max([0] + [cap(entries[i][0]) for i in root_candidates])
+    top_area = [area(it) * link for i, (it, _) in enumerate(entries)
+                for parent, _, link in links[i] if parent == -1]
+    maximum_capacity = cap(outer)
     free = model.new_int_var(0, maximum_capacity, 'free')
-    model.add(free == (cap(outer) if stash else sum(cap(it) * roots[i] for i, (it, _) in enumerate(entries))) - sum(top_area))
-    # Sum of all compartment free space bounds outer free space. This propagates
-    # the objective through the whole nesting tree without choosing coordinates.
-    model.add(free <= (cap(outer) if stash else 0)
-              + sum(cap(entries[i][0]) * present[i] for i in bag_indices)
-              - sum(area(it) * (present[i] - roots[i]) for i, (it, _) in enumerate(entries)))
-    rig_weight = len(rig_indices) + 1
-    bag_weight = maximum_capacity * rig_weight + len(rig_indices) + 1
-    model.maximize(sum(present[i] for i in bag_indices) * bag_weight + free * rig_weight + sum(present[i] for i in rig_indices))
+    model.add(free == maximum_capacity - sum(top_area))
+    # Unused space across the entire tree bounds free space in the stash.
+    model.add(free <= maximum_capacity
+              + sum((cap(it) - area(it)) * present[i] for i, (it, _) in enumerate(entries)))
+    # One more packed bag outweighs every possible difference in stash free space.
+    model.maximize(sum(present) * (maximum_capacity + 1) + free)
     # Resume from the last feasible assignment. CP-SAT starts a fresh search;
     # hints retain the incumbent, not the previous internal search tree.
     hint = data.get('resumeHint')
@@ -241,7 +223,7 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         def make(it, uid, d):
             return {**copy.deepcopy(it), 'uid': uid, 'depth': d, 'location': None, 'children': [], 'spaces': [{**sp, 'cells': [None] * (sp['w'] * sp['h'])} for sp in it['comp']]}
         nodes = {i: make(it, uid, values(depth[i])) for i, (it, uid) in enumerate(entries) if values(present[i])}
-        root_node = make(outer, 'stash#1', 0) if stash else nodes[next(i for i in nodes if values(roots[i]))]
+        root_node = make(outer, 'stash#1', 0)
         used = 0
         for i, child in nodes.items():
             for parent, ci, link in links[i]:
@@ -257,10 +239,10 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
                 if target is root_node:
                     used += area(child)
         missing = [it for i, (it, _) in enumerate(entries) if i not in nodes]
-        bags = sum(i in nodes for i in bag_indices); rigs = sum(i in nodes for i in rig_indices)
+        bags = len(nodes)
         before = sum(area(it) for it, _ in entries)
-        after = (used if stash else area(root_node)) + sum(area(it) for it in missing)
-        return {'root': root_node, 'unplaced': missing, 'included': len(nodes) - (0 if stash else 1), 'total': n, 'packedBags': bags, 'packedRigs': rigs, 'allBagsPacked': bags == len(bag_indices), 'free': values(free), 'used': used, 'before': before, 'after': after, 'saving': before - after, 'optimal': optimal, 'visited': branches,
+        after = used + sum(area(it) for it in missing)
+        return {'root': root_node, 'unplaced': missing, 'included': bags, 'total': n, 'packedBags': bags, 'allBagsPacked': bags == n, 'free': values(free), 'used': used, 'before': before, 'after': after, 'saving': before - after, 'optimal': optimal, 'visited': branches,
                 'resumeHint': [values(model.get_int_var_from_proto_index(index))
                                for index in range(len(model.proto.variables))]}
 

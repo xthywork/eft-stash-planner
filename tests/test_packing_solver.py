@@ -9,10 +9,7 @@ def bag(name, w, h, comp=(), **extra):
     return dict(id=name, n=name, en=name, cat='bag', ow=w, oh=h, comp=[dict(w=a, h=b) for a, b in comp], allowBags=True, **extra)
 
 def solve(items, **options):
-    return solve_packing(dict(mode='workspace', target='root', depth=6, rotate=False, items=[dict(it=it, qty=q) for it, q in items], **{}) | options)
-
-def root(w, h):
-    return bag('root', w, h, [(w, h)])
+    return solve_packing(dict(stashW=10, stashH=10, depth=6, rotate=False, items=[dict(it=it, qty=q) for it, q in items]) | options)
 
 def oracle(w, h, shapes):
     best = (0, 0)
@@ -31,7 +28,7 @@ def oracle(w, h, shapes):
                     continue
                 board.update(cells); walk(i+1, count+1, used+rw*rh); board.difference_update(cells)
     walk(0, 0, 0)
-    return best[0]+1, w*h+best[1]
+    return best[0], w*h+best[1]
 
 class Packing(unittest.TestCase):
     def check_geometry(self, node):
@@ -48,73 +45,91 @@ class Packing(unittest.TestCase):
     def test_takedown(self):
         td = bag('td',3,7,[(3,8)],nestFamily='td',blockSameFamily=True)
         for quantity in (2,3):
-            r = solve([(root(6,7),1),(td,quantity)])
-            self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],3); self.assertEqual(r['free'],0)
-            self.assertEqual(len(r['unplaced']),quantity-2); self.check_geometry(r['root'])
-        self.assertEqual(solve([(root(7,6),1),(td,2)])['packedBags'],1)
-        self.assertEqual(solve([(root(7,6),1),(td,2)],rotate=True)['packedBags'],3)
-        self.assertEqual(solve([(bag('root',6,7,[(6,3),(6,4)]),1),(td,2)],rotate=True)['packedBags'],1)
+            r = solve([(td,quantity)],stashW=6,stashH=7)
+            self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],2)
+            self.assertEqual(r['free'],0); self.assertEqual(len(r['unplaced']),quantity-2)
+            self.check_geometry(r['root'])
+        self.assertEqual(solve([(td,2)],stashW=7,stashH=6)['packedBags'],0)
+        self.assertEqual(solve([(td,2)],stashW=7,stashH=6,rotate=True)['packedBags'],2)
+        # Only the carrier fits in the stash. Separate pockets cannot be combined.
+        for comp, expected in [([(6,3),(6,4)],1), ([(6,7)],3)]:
+            r = solve([(bag('carrier',1,1,comp),1),(td,2)],stashW=1,stashH=1,rotate=True)
+            self.assertEqual(r['packedBags'],expected); self.check_geometry(r['root'])
 
     def test_nested_space_and_ancestry(self):
-        r = solve([(root(4,4),1),(bag('a',2,2,[(3,3)]),1),(bag('b',3,3,[(2,2)]),1)])
+        r = solve([(bag('a',2,2,[(3,3)]),1),(bag('b',3,3,[(2,2)]),1)],stashW=4,stashH=4)
         self.assertEqual(r['free'],12); self.assertTrue(r['allBagsPacked']); self.check_geometry(r['root'])
         td = bag('td',1,1,[(2,2)],nestFamily='td',blockSameFamily=True)
-        r = solve([(root(1,1),1),(td,2),(bag('bridge',2,2,[(2,2)]),1)])
-        self.assertEqual(r['packedBags'],3)  # second td cannot nest indirectly through bridge
+        r = solve([(td,2),(bag('bridge',2,2,[(2,2)]),1)],stashW=1,stashH=1)
+        self.assertEqual(r['packedBags'],2)  # same family cannot nest indirectly
 
-    def test_item_order_and_rigs(self):
-        r = solve([(root(1,1),1),(bag('large',2,1),1),(bag('small',1,1,[(2,1)]),1)])
-        self.assertTrue(r['allBagsPacked']); self.check_geometry(r['root'])
-        rig = dict(id='rig',n='rig',cat='rig',ow=1,oh=1,comp=[],allowBags=False)
-        r = solve([(root(2,2),1),(bag('a',1,1,[(1,1)]),1),(rig,2)])
-        self.assertEqual(r['free'],3); self.assertEqual(r['packedRigs'],1); self.assertEqual(len(r['unplaced']),1)
+    def test_item_order(self):
+        items=[(bag('large',2,1),1),(bag('small',1,1,[(2,1)]),1)]
+        for order in [items,list(reversed(items))]:
+            r=solve(order,stashW=1,stashH=1)
+            self.assertTrue(r['allBagsPacked']); self.check_geometry(r['root'])
+
+    def test_non_backpacks_are_excluded_before_model_and_limits(self):
+        items=[(bag('a',1,1,[(2,2)]),1),(bag('b',2,2,[(1,1)]),1)]
+        clean=solve(items,stashW=3,stashH=3)
+        # Unknown categories and malformed non-backpack dimensions/quantities
+        # must never enter the packing model or count against the 150-bag limit.
+        extras=[(dict(id='other'+str(i),cat='rig' if i%2 else 'ammo'), 'unused') for i in range(200)]
+        mixed=solve(items+extras,stashW=3,stashH=3,mode='workspace',target='ignored')
+        for key in ['total','included','packedBags','free','before','after','saving']:
+            self.assertEqual(clean[key],mixed[key])
+        self.assertEqual(len(clean['resumeHint']),len(mixed['resumeHint']))
+        self.assertNotIn('packedRigs',mixed)
+        self.assertEqual(mixed['root']['cat'],'stash')
+        self.assertEqual(mixed['total'],2); self.check_geometry(mixed['root'])
+
+    def test_empty_inventory_does_not_start_solver(self):
+        with patch('packing_solver.cp_model.CpModel',side_effect=AssertionError('unneeded model')):
+            for items in [[],[(dict(cat='rig'),1000)]]:
+                r=solve(items,stashW=4,stashH=8)
+                self.assertEqual((r['total'],r['free'],r['visited']),(0,32,0))
+                self.assertTrue(r['optimal']); self.check_geometry(r['root'])
 
     def test_independent_oracle(self):
         for k in range(32):
-            shapes = [(1+((k >> (2*i))&1),1+((k>>(2*i+1))&1)) for i in range(3)]
-            expected = oracle(2,3,shapes)
-            r = solve([(root(2,3),1)]+[(bag('item'+str(i),w,h),1) for i,(w,h) in enumerate(shapes)])
-            self.assertTrue(r['optimal']); self.assertEqual((r['packedBags'],r['free']),expected); self.check_geometry(r['root'])
+            shapes=[(1+((k>>(2*i))&1),1+((k>>(2*i+1))&1)) for i in range(3)]
+            expected=oracle(2,3,shapes)
+            r=solve([(bag('item'+str(i),w,h),1) for i,(w,h) in enumerate(shapes)],stashW=2,stashH=3)
+            self.assertTrue(r['optimal']); self.assertEqual((r['packedBags'],r['free']),expected)
+            self.check_geometry(r['root'])
 
     def test_repeated_items_efficiency(self):
-        r = solve([(root(10,10),1),(bag('same',3,3),8)])
+        r=solve([(bag('same',3,3),8)],stashW=10,stashH=10)
         self.assertTrue(r['optimal']); self.assertTrue(r['allBagsPacked']); self.assertEqual(r['free'],28)
-        self.assertLess(r['elapsedSeconds'],5); self.assertLess(r['visited'],100000)
-        print('8 repeated bags:',r['elapsedSeconds'],'seconds,',r['visited'],'branches')
+        self.assertLess(r['elapsedSeconds'],5); self.assertLess(r['visited'],10000)
 
-    def test_stash(self):
-        r=solve([(bag('a',1,1,[(2,2)]),1),(bag('b',2,2,[(1,1)]),1)],mode='stash',stashW=3,stashH=3)
-        self.assertTrue(r['allBagsPacked']); self.assertEqual(r['free'],8); self.check_geometry(r['root'])
-
-    def test_equivalent_variants_auto_root(self):
-        items = [(bag('variant'+str(i),4,5,[(4,5)]),1) for i in range(8)]
-        r = solve(items,target='auto',rotate=True)
+    def test_equivalent_variants_and_depth(self):
+        items=[(bag('variant'+str(i),4,5,[(4,5)]),1) for i in range(8)]
+        r=solve(items,stashW=4,stashH=5,rotate=True)
         self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],6)
         self.assertEqual(r['free'],0); self.check_geometry(r['root'])
-        self.assertLess(r['visited'],1000)
-        self.assertLess(r['elapsedSeconds'],2)
+        self.assertLess(r['visited'],1000); self.assertLess(r['elapsedSeconds'],2)
         def ids(node):
-            return [node['id']] + [name for child in node['children'] for name in ids(child)]
-        self.assertCountEqual(ids(r['root']) + [it['id'] for it in r['unplaced']],
-                              [it['id'] for it, _ in items])
-        # A specifically requested model must not be replaced by its equivalent.
-        r = solve(items,target='variant7',rotate=True)
-        self.assertEqual(r['root']['id'],'variant7')
-        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],6)
+            return ([node['id']] if node['cat']=='bag' else [])+[name for child in node['children'] for name in ids(child)]
+        self.assertCountEqual(ids(r['root'])+[it['id'] for it in r['unplaced']],[it['id'] for it,_ in items])
+        shallow=solve(items,stashW=4,stashH=5,depth=2)
+        self.assertEqual(shallow['packedBags'],2)
 
     def test_unreachable_containers(self):
-        # The large bag could hold both small bags, but cannot reach the root.
-        items = [(root(2,2),1),(bag('unreachable',5,5,[(8,8)]),1),
-                 (bag('small',1,1),2)]
-        r = solve(items)
-        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],3)
+        r=solve([(bag('unreachable',5,5,[(8,8)]),1),(bag('small',1,1),2)],stashW=2,stashH=2)
+        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],2)
         self.assertEqual(r['free'],2); self.check_geometry(r['root'])
         self.assertEqual([it['id'] for it in r['unplaced']],['unreachable'])
 
+    def test_containers_that_disallow_backpacks(self):
+        for options in [dict(allowBags=False),dict(onlyMeds=True)]:
+            carrier=bag('carrier',1,1,[(4,4)]) | options
+            r=solve([(carrier,1),(bag('large',2,2),1)],stashW=1,stashH=1)
+            self.assertEqual(r['packedBags'],1); self.assertFalse(r['root']['children'][0]['children'])
+
     def test_resume_hint_and_unlimited(self):
-        data = dict(mode='workspace',target='root',depth=6,rotate=True,
-                    items=[dict(it=root(4,4),qty=1),
-                           dict(it=bag('a',2,2,[(3,3)]),qty=1),
+        data = dict(stashW=4,stashH=4,depth=6,rotate=True,
+                    items=[dict(it=bag('a',2,2,[(3,3)]),qty=1),
                            dict(it=bag('b',3,3,[(2,2)]),qty=1)])
         original_factory = cp_model.CpSolver
         solvers = []
