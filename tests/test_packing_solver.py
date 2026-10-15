@@ -31,6 +31,32 @@ def oracle(w, h, shapes):
     return best[0], w*h+best[1]
 
 class Packing(unittest.TestCase):
+    def test_mixed_chain_patterns_user_configuration(self):
+        medical = bag('sfmp',4,5,[(6,8)])
+        medical['allowBags'] = False
+        items = [(bag('6sh118',6,7,[(6,8)]),9), (medical,13),
+                 (bag('rush100',6,7,[(5,7),(2,2),(2,2),(1,2)]),7),
+                 (bag('blackjack',5,7,[(6,7)]),13),
+                 (bag('modular45',5,8,[(5,8)]),11)]
+        r = solve(items,stashW=10,stashH=28,rotate=True)
+        self.assertTrue(r['optimal'])
+        self.assertEqual((r['packedBags'],r['total'],r['free']),(53,53,0))
+        self.assertLess(r['visited'],20000)
+        self.check_geometry(r['root'])
+        nodes = []
+        def walk(node):
+            for child in node['children']:
+                self.assertEqual(child['depth'],node['depth']+1)
+                self.assertLessEqual(child['depth'],6)
+                if child['id']=='sfmp':self.assertEqual(child['children'],[])
+                nodes.append(child['uid']);walk(child)
+        walk(r['root'])
+        self.assertCountEqual(nodes,[it['id']+'#'+str(i+1) for it,q in items for i in range(q)])
+        resumed=solve(items,stashW=10,stashH=28,rotate=True,unlimited=True,resumeHint=r['resumeHint'])
+        self.assertTrue(resumed['optimal'])
+        self.assertEqual((resumed['packedBags'],resumed['free']),(53,0))
+        self.check_geometry(resumed['root'])
+
     def check_geometry(self, node):
         occupied = [set() for _ in node['spaces']]
         for child in node['children']:

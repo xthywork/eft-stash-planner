@@ -4,6 +4,7 @@ import time
 import threading
 from collections import deque
 from ortools.sat.python import cp_model
+from chain_patterns import solve_chain_patterns
 
 
 def coordinate_patterns(entries, index, axis, limit, rotate):
@@ -130,6 +131,9 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
         reduced = solve_uniform_chains(data, entries, notify, cancel)
         if reduced is not None:
             return reduced[0]
+    reduced = solve_chain_patterns(data, entries, groups, notify, cancel, make_node)
+    if reduced is not None:
+        return reduced[0]
     cap = lambda it: sum(sp['w'] * sp['h'] for sp in it['comp'])
     area = lambda it: it['ow'] * it['oh']
     outer = {'id': 'stash', 'n': '倉庫', 'en': 'Stash', 'cat': 'stash', 'ow': data.get('stashW', 10), 'oh': data.get('stashH', 28), 'comp': [{'w': data.get('stashW', 10), 'h': data.get('stashH', 28)}], 'allowBags': True}
