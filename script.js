@@ -235,7 +235,7 @@ function renderCatalog(){
 
 }
 
-let autoTimer=0;function changed(){persist();renderCatalog();clearTimeout(autoTimer);autoTimer=setTimeout(plan,110)}
+let autoTimer=0;function changed(){persist();renderCatalog();clearTimeout(autoTimer);plan({prepareOnly:true});if(state.liveAnalysis)autoTimer=setTimeout(plan,110)}
 // Continuous quantity controls: press and hold to repeat with progressive acceleration.
 let quantityHold=null;
 let lastPointerHandled=null;
@@ -259,6 +259,7 @@ function adjustQuantity(btn,quick=false){
    card.classList.toggle('owned',quantity>0);
   }
   $('ownedCount').textContent=`${count()} ${t('件','ITEMS')}`;
+  plan({prepareOnly:true});
  }else changed();
  return true;
 }
@@ -477,15 +478,21 @@ function explainUnplaced(sol,item){
 function allNodes(root){const out=[root];for(let i=0;i<out.length;i++)out.push(...out[i].children);return out}
 function getSteps(root){const steps=[];function visit(parent){for(const child of parent.children)visit(child);for(const child of parent.children){const p=child.location;steps.push({from:child,to:parent,loc:p})}}visit(root);return steps}
 function shortNode(n){return `${n.n} [${n.uid.split('#')[1]}]`}
-let packingWorker=null,searchGeneration=0,packingInputKey=null,packingVisited=0,packingStopping=false,packingHasRun=false;
+let packingWorker=null,searchGeneration=0,packingInputKey=null,packingVisited=0,packingStopping=false,packingHasRun=false,packingPhase='idle',packingStopTimer=0;
 function restorePackingParents(node,parent=null){node.parent=parent;node.children=node.children.map(child=>restorePackingParents(child,node));return node}
-function showSearchStatus(message,running){
+function updateAnalysisButtons(){
+ const running=packingPhase!=='idle',hasItems=count()>0;
+ const configure=(id,disabled,reason)=>{const button=$(id);button.disabled=disabled;button.title=disabled?reason:''};
+ configure('startSearchBtn',running||!hasItems,running?t('分析進行中，可停止或重新分析','Analysis is running; stop or restart it'):t('請先加入背包','Add a backpack first'));
+ configure('cancelSearchBtn',!running||packingStopping,packingStopping?t('正在等待停止確認，可按重新分析','Waiting for stop confirmation; you can restart'):t('目前沒有進行中的分析','No analysis is running'));
+ configure('continueSearchBtn',running||!packingHasRun||state.solution?.optimal===true||!hasItems,
+  running?t('請先停止目前分析','Stop the current analysis first'):state.solution?.optimal?t('已證明最佳解，可按重新分析','Optimality is proven; you can restart'):t('請先開始分析','Start an analysis first'));
+ configure('restartSearchBtn',!hasItems,t('請先加入背包','Add a backpack first'));
+}
+function showSearchStatus(message){
  $('searchStatus').hidden=false;$('searchStatusText').textContent=message;
  $('searchTotalCount').textContent=packingVisited.toLocaleString();
- $('startSearchBtn').disabled=running||!count();
- $('cancelSearchBtn').disabled=!running||packingStopping;
- $('continueSearchBtn').disabled=!packingHasRun||running||state.solution?.optimal===true||!count();
- $('restartSearchBtn').disabled=packingStopping;
+ updateAnalysisButtons();
 }
 function betterPacking(a,b){
  if(!b)return true;
@@ -493,13 +500,14 @@ function betterPacking(a,b){
  return true;
 }
 function plan(options={}){
+ clearTimeout(autoTimer);
  const input={mode:'stash',depth:state.depth,rotate:state.rotate,stashW:state.stashW,stashH:state.stashH,items:getAll().map(it=>({it,qty:Math.min(100,Math.max(0,Number(state.qty[it.id])||0))})).filter(entry=>entry.qty>0)};
  const inputKey=JSON.stringify(input),sameInput=inputKey===packingInputKey;
- if(!state.liveAnalysis&&!options.restart&&!options.unlimited){
+ if(options.prepareOnly||(!state.liveAnalysis&&!options.restart&&!options.unlimited)){
   if(!sameInput){
-   packingWorker?.terminate();packingWorker=null;++searchGeneration;packingStopping=false;packingHasRun=false;
+   clearTimeout(packingStopTimer);packingWorker?.terminate();packingWorker=null;++searchGeneration;packingStopping=false;packingHasRun=false;packingPhase='idle';
    packingInputKey=inputKey;packingVisited=0;state.solution=null;state.viewId=null;
-   showSearchStatus(t('配置待分析；請按開始分析','Configuration ready; press Start analysis'),false);
+   showSearchStatus(!count()?t('請先加入背包','Add a backpack first'):state.liveAnalysis?t('配置已變更，等待分析','Configuration changed; waiting to analyze'):t('配置待分析；請按開始分析','Configuration ready; press Start analysis'));
   }
   renderResult();return;
  }
@@ -509,10 +517,11 @@ function plan(options={}){
  const baseVisited=packingVisited;
  if(continuing&&state.solution?.resumeHint)input.resumeHint=state.solution.resumeHint;
  input.unlimited=!!options.unlimited;input.requestId=globalThis.crypto?.randomUUID?.()||`analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`;
- packingHasRun=true;packingInputKey=inputKey;packingWorker?.terminate();const generation=++searchGeneration;packingStopping=false;
+ packingHasRun=true;packingInputKey=inputKey;packingWorker?.terminate();const generation=++searchGeneration;packingStopping=false;packingPhase='running';clearTimeout(packingStopTimer);
  renderResult();showSearchStatus(options.unlimited?t('持續分析中 · 無時間上限；尚未證明最佳','Analyzing without a time limit; optimality not yet proven'):t('正在分析收納配置…','Analyzing packing constraints…'),true);
- const worker=new Worker('packing-worker.js');packingWorker=worker;
- function finish(message){packingWorker=null;packingStopping=false;worker.terminate();showSearchStatus(message,false)}
+ let worker;
+ try{worker=new Worker('packing-worker.js');packingWorker=worker}catch(error){packingWorker=null;packingPhase='idle';showSearchStatus(t('分析失敗：','Analysis failed: ')+error.message);return}
+ function finish(message){clearTimeout(packingStopTimer);packingWorker=null;packingStopping=false;packingPhase='idle';worker.terminate();showSearchStatus(message)}
  worker.onmessage=event=>{
   if(generation!==searchGeneration||packingWorker!==worker)return;const message=event.data;
   if(Number.isFinite(message.visited))packingVisited=Math.max(packingVisited,baseVisited+message.visited);
@@ -531,16 +540,23 @@ function plan(options={}){
    const result=state.solution;
    finish(result?.optimal?(result.allBagsPacked?t(`最佳解已證明 · 所有背包已放入，倉庫剩餘 ${result.free} 格`,`Optimal solution proven · all backpacks packed; ${result.free} stash slots free`):t('已證明無法放入所有背包；顯示可放入最多背包的最佳方案','Not all backpacks can fit; showing the proven optimal partial plan')):message.reason==='stopped'?t('分析已停止；保留目前方案與累計查找數，可繼續分析','Analysis stopped; the current plan and total are retained. You can continue.'):message.reason==='infeasible'?t('目前設定無可行配置','No feasible packing with the current settings'):message.reason==='limit'?(input.unlimited?t('本次分析已結束，尚未證明最佳；可繼續分析','Analysis ended without an optimality proof; you can continue'):t('已達分析上限；可按繼續分析解除時間上限','Analysis limit reached; continue to remove the time limit')):t('請先加入背包','Add a backpack to begin'));
   }else if(message.type==='control-error'){
-   packingStopping=false;showSearchStatus(t('停止分析失敗：','Unable to stop analysis: ')+message.message,true);
+   packingStopping=false;packingPhase='running';clearTimeout(packingStopTimer);showSearchStatus(t('停止分析失敗：','Unable to stop analysis: ')+message.message,true);
   }else if(message.type==='error')finish(t('分析失敗：','Analysis failed: ')+message.message);
  };
  worker.onerror=event=>{if(generation===searchGeneration&&packingWorker===worker)finish(t('分析失敗：','Analysis failed: ')+event.message)};
- worker.postMessage(input);
+ worker.onmessageerror=()=>{if(generation===searchGeneration&&packingWorker===worker)finish(t('分析資料讀取失敗，可重新分析','Unable to read analysis data; you can restart'))};
+ try{worker.postMessage(input)}catch(error){finish(t('分析失敗：','Analysis failed: ')+error.message)}
 }
 $('cancelSearchBtn').addEventListener('click',()=>{
  if(!packingWorker||packingStopping)return;
- packingStopping=true;showSearchStatus(t('正在停止分析並取得最後查找總數…','Stopping analysis and collecting the final search total…'),true);
- packingWorker.postMessage({command:'stop'});
+ packingStopping=true;packingPhase='stopping';showSearchStatus(t('正在停止分析並取得最後查找總數…','Stopping analysis and collecting the final search total…'),true);
+ const worker=packingWorker,generation=searchGeneration;
+ worker.postMessage({command:'stop'});
+ clearTimeout(packingStopTimer);packingStopTimer=setTimeout(()=>{
+  if(generation!==searchGeneration||packingWorker!==worker||!packingStopping)return;
+  worker.terminate();packingWorker=null;packingStopping=false;packingPhase='idle';
+  showSearchStatus(t('停止確認逾時；已中斷連線並保留目前方案與已收到的查找數，可繼續或重新分析','Stop confirmation timed out; disconnected and retained the current plan and received search count. You can continue or restart.'));
+ },5000);
 });
 $('startSearchBtn').addEventListener('click',()=>plan({restart:true}));
 $('liveAnalysisToggle').checked=state.liveAnalysis;
