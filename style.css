@@ -191,11 +191,12 @@ html,body{min-width:1040px;overflow:hidden}
 .stash-mode .visual .legend,.stash-mode .visual .visual-foot{flex:0 0 auto}
 .stash-mode #stepsPane{overflow-y:auto}
 .stash-mode .step-list{max-height:none;min-height:0}
-.stash-mode .metrics{grid-template-columns:1fr}
-.stash-mode .metric{border-right:0;border-bottom:1px solid #3d4538;display:grid;grid-template-columns:90px 1fr;column-gap:8px;align-items:center}
-.stash-mode .metric:last-child{border-bottom:0}
-.stash-mode .metric-num{grid-row:1/3;font-size:25px}
-.stash-mode .metric-label,.stash-mode .metric-sub{margin-top:1px}
+.stash-mode .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stash-mode .metric{display:flex;flex-direction:column;align-items:center;padding:12px 5px;text-align:center;border-right:1px solid #3d4538;border-bottom:0;overflow-wrap:anywhere}
+.stash-mode .metric:last-child{border-right:0}
+.stash-mode .metric-num{font-size:25px;max-width:100%}
+.stash-mode .metric-label{margin-top:7px}
+.stash-mode .metric-sub{margin-top:4px}
 /* v6 — uninterrupted interaction, full-height stash analysis, breadcrumb navigation */
 .btn[hidden],.stash-leftovers[hidden]{display:none!important}
 .btn-undo{border-color:#796b43;color:#f4ddb0;background:#373222;animation:undo-enter .16s ease-out}
@@ -320,11 +321,11 @@ html,body{min-width:1040px;overflow:hidden}
 
 .search-status[hidden]{display:none!important}
 .search-status{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:10px;border:1px solid #655b41;border-radius:5px;color:var(--accent2);font-size:12px;line-height:1.6;flex:0 0 auto}
-.search-status .btn{align-self:flex-start}
 .search-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;color:var(--text);font-size:13px}
 .search-total strong{font:600 16px var(--mono);overflow-wrap:anywhere}
+.analysis-controls{display:flex;flex-direction:column;gap:8px;margin-top:12px;flex:0 0 auto;min-width:0}
 .analysis-actions{display:flex;flex-wrap:wrap;gap:6px}
-.search-status .analysis-actions .btn{white-space:normal;min-height:34px;font-size:13px;line-height:1.4;text-align:left}
+.analysis-actions .btn{white-space:normal;min-height:34px;font-size:13px;line-height:1.4;text-align:left}
 .analysis-actions .btn:disabled{opacity:.45;cursor:default}
 
 .settings-row{grid-template-columns:1fr}
