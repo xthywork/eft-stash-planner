@@ -127,6 +127,47 @@ class Packing(unittest.TestCase):
             r=solve([(carrier,1),(bag('large',2,2),1)],stashW=1,stashH=1)
             self.assertEqual(r['packedBags'],1); self.assertFalse(r['root']['children'][0]['children'])
 
+    def test_uniform_chain_partial_tail_and_rotation(self):
+        # The internal pocket only fits a rotated copy; stash orientation is
+        # also constrained. Seven copies need three chains at depth three.
+        items=[(bag('variant'+str(i),2,3,[(3,2)]),1) for i in range(7)]
+        r=solve(items,stashW=3,stashH=2,depth=3,rotate=True)
+        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],3)
+        self.assertEqual(len(r['unplaced']),4); self.assertEqual(r['free'],0)
+        self.check_geometry(r['root'])
+        r=solve(items,stashW=3,stashH=6,depth=3,rotate=True)
+        self.assertTrue(r['optimal']); self.assertEqual(r['packedBags'],7)
+        self.assertEqual(len(r['root']['children']),3); self.check_geometry(r['root'])
+        self.assertEqual((r['before'],r['after'],r['saving']),(42,18,24))
+        self.assertEqual(solve(items,stashW=3,stashH=2,depth=3)['packedBags'],0)
+
+    def test_uniform_chain_keeps_every_original_id_and_streams_valid_results(self):
+        items=[dict(it=bag('variant'+str(i),4,5,[(4,5)]),qty=1) for i in range(30)]
+        data=dict(stashW=10,stashH=28,depth=6,rotate=True,items=items)
+        messages=[];r=solve_packing(data,messages.append)
+        def walk(node):
+            yield node
+            for child in node['children']: yield from walk(child)
+        for message in messages:
+            if message.get('result'):
+                result=message['result'];self.check_geometry(result['root'])
+                self.assertEqual(result['total'],30)
+                self.assertCountEqual([n['id'] for n in walk(result['root']) if n['cat']=='bag']
+                                      +[it['id'] for it in result['unplaced']],
+                                      [entry['it']['id'] for entry in items])
+                self.assertLessEqual(max(n['depth'] for n in walk(result['root'])),6)
+        self.assertTrue(r['optimal']);self.assertEqual(r['free'],180)
+        self.assertLess(len(r['resumeHint']),100);self.assertLess(r['visited'],2000)
+        resumed=solve_packing(data|dict(resumeHint=r['resumeHint'],unlimited=True))
+        self.assertTrue(resumed['optimal']);self.assertEqual(resumed['packedBags'],30)
+        self.check_geometry(resumed['root'])
+
+    def test_branching_uniform_bags_are_not_forced_into_chains(self):
+        # Two children per bag can fit seven copies at depth three in one slot.
+        r=solve([(bag('branch',1,1,[(2,1)]),7)],stashW=1,stashH=1,depth=3)
+        self.assertTrue(r['optimal']);self.assertEqual(r['packedBags'],7)
+        self.check_geometry(r['root'])
+
     def test_resume_hint_and_unlimited(self):
         data = dict(stashW=4,stashH=4,depth=6,rotate=True,
                     items=[dict(it=bag('a',2,2,[(3,3)]),qty=1),

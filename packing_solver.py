@@ -12,15 +12,88 @@ def coordinate_patterns(entries, index, axis, limit, rotate):
     Each item contributes at most one edge, even when it can rotate. This
     retains a compact representative of every feasible rectangle packing.
     """
-    sums = {0}
+    reachable = 1  # Bit k means that coordinate k can be formed.
+    mask = (1 << (limit + 1)) - 1
     for j, (item, _) in enumerate(entries):
         if j == index:
             continue
         edges = {item['ow' if axis == 'x' else 'oh']}
         if rotate:
             edges.update((item['ow'], item['oh']))
-        sums |= {s + edge for s in sums for edge in edges if s + edge <= limit}
-    return sorted(sums)
+        previous = reachable
+        for edge in edges:
+            if edge <= limit:
+                reachable |= previous << edge
+        reachable &= mask
+    return [value for value in range(limit + 1) if reachable & (1 << value)]
+
+
+def make_node(item, uid, depth):
+    return {**copy.deepcopy(item), 'uid': uid, 'depth': depth, 'location': None,
+            'children': [], 'spaces': [{**sp, 'cells': [None] * (sp['w'] * sp['h'])}
+                                      for sp in item['comp']]}
+
+
+def solve_uniform_chains(data, entries, notify, cancel):
+    """Exact reduction for one interchangeable type with at most one child.
+
+    Every occupied stash rectangle can hold at most depth copies. Saturating
+    chains first minimizes stash rectangles, so only ceil(n / depth) identical
+    outer rectangles need packing. An incomplete final chain is ordered last.
+    """
+    item = entries[0][0]
+    if (data['depth'] <= 1 or len(entries) <= 1 or not item.get('allowBags', True)
+            or item.get('onlyMeds') or item.get('blockSameFamily') or len(item['comp']) != 1):
+        return None
+    sp = item['comp'][0]
+    area = item['ow'] * item['oh']
+    fits = item['ow'] <= sp['w'] and item['oh'] <= sp['h']
+    turned = data['rotate'] and item['oh'] <= sp['w'] and item['ow'] <= sp['h']
+    if sp['w'] * sp['h'] >= 2 * area or not (fits or turned):
+        return None
+    chains = [entries[start:start + data['depth']] for start in range(0, len(entries), data['depth'])]
+    # Empty compartments disable recursion and all nested-container variables.
+    proxy = dict(id='chain', n='chain', cat='bag', ow=item['ow'], oh=item['oh'],
+                 comp=[], allowBags=False)
+    reduced = {**data, 'depth': 1, 'items': [dict(it=proxy, qty=len(chains))]}
+
+    def expand(output):
+        if output is None:
+            return None
+        root = copy.deepcopy(output['root'])
+        placed = {int(node['uid'].split('#')[1]) - 1: node for node in root['children']}
+        root['children'] = []
+        root['spaces'][0]['cells'] = [None] * (root['ow'] * root['oh'])
+        missing = []
+        for index, chain in enumerate(chains):
+            if index not in placed:
+                missing.extend(copy.deepcopy(it) for it, _ in chain)
+                continue
+            parent = root
+            for level, (it, uid) in enumerate(chain, start=1):
+                node = make_node(it, uid, level)
+                loc = placed[index]['location'] if level == 1 else dict(
+                    ci=0, x=0, y=0, w=it['ow'] if fits else it['oh'],
+                    h=it['oh'] if fits else it['ow'], rot=not fits)
+                node['location'] = loc
+                parent['children'].append(node)
+                region = parent['spaces'][loc['ci']]
+                for y in range(loc['y'], loc['y'] + loc['h']):
+                    for x in range(loc['x'], loc['x'] + loc['w']):
+                        region['cells'][y * region['w'] + x] = uid
+                parent = node
+        packed = len(entries) - len(missing)
+        before = len(entries) * area
+        after = output['used'] + len(missing) * area
+        return {**output, 'root': root, 'unplaced': missing, 'total': len(entries),
+                'included': packed, 'packedBags': packed, 'allBagsPacked': not missing,
+                'before': before, 'after': after, 'saving': before - after}
+
+    def forward(message):
+        notify({**message, 'result': expand(message['result'])} if 'result' in message else message)
+    # A wrapper distinguishes an applicable reduction that was stopped from a
+    # type that cannot be reduced. Never restart a cancelled search as fallback.
+    return (expand(solve_packing(reduced, forward, cancel)),)
 
 
 def solve_packing(data, notify=lambda message: None, cancel=None):
@@ -53,6 +126,10 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
                 bool(it.get('blockSameFamily')))
     entries.sort(key=lambda entry: repr(equivalence(entry[0])))
     groups = [equivalence(it) for it, _ in entries]
+    if entries and all(group == groups[0] for group in groups):
+        reduced = solve_uniform_chains(data, entries, notify, cancel)
+        if reduced is not None:
+            return reduced[0]
     cap = lambda it: sum(sp['w'] * sp['h'] for sp in it['comp'])
     area = lambda it: it['ow'] * it['oh']
     outer = {'id': 'stash', 'n': '倉庫', 'en': 'Stash', 'cat': 'stash', 'ow': data.get('stashW', 10), 'oh': data.get('stashH', 28), 'comp': [{'w': data.get('stashW', 10), 'h': data.get('stashH', 28)}], 'allowBags': True}
@@ -106,12 +183,15 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     maximum = max([1] + [max(sp['w'], sp['h']) for _, it in containers for sp in it['comp']])
     present = [model.new_bool_var(f'present{i}') for i in range(n)]
     depth = [model.new_int_var(0, data['depth'], f'depth{i}') for i in range(n)]
-    x, y = [], []
+    x, y, pattern_cache = [], [], {}
     for i, (it, _) in enumerate(entries):
         for axis, variables, edge in [('x', x, 'w'), ('y', y, 'h')]:
             minimum_edge = min(it['ow'], it['oh']) if data['rotate'] else it['ow' if axis == 'x' else 'oh']
             limit = max([0] + [sp[edge] - minimum_edge for _, _, sp in candidates[i]])
-            patterns = coordinate_patterns(entries, i, axis, limit, data['rotate'])
+            key = (it['ow'], it['oh'], axis, limit)
+            if key not in pattern_cache:
+                pattern_cache[key] = coordinate_patterns(entries, i, axis, limit, data['rotate'])
+            patterns = pattern_cache[key]
             variables.append(model.new_int_var_from_domain(cp_model.Domain.from_values(patterns), f'{axis}{i}'))
     rotation, width, height, links, bins = [], [], [], [[] for _ in entries], {}
     link_count = 0
@@ -220,10 +300,8 @@ def solve_packing(data, notify=lambda message: None, cancel=None):
     solver.parameters.max_memory_in_mb = 256
 
     def result(values, optimal=False, branches=0):
-        def make(it, uid, d):
-            return {**copy.deepcopy(it), 'uid': uid, 'depth': d, 'location': None, 'children': [], 'spaces': [{**sp, 'cells': [None] * (sp['w'] * sp['h'])} for sp in it['comp']]}
-        nodes = {i: make(it, uid, values(depth[i])) for i, (it, uid) in enumerate(entries) if values(present[i])}
-        root_node = make(outer, 'stash#1', 0)
+        nodes = {i: make_node(it, uid, values(depth[i])) for i, (it, uid) in enumerate(entries) if values(present[i])}
+        root_node = make_node(outer, 'stash#1', 0)
         used = 0
         for i, child in nodes.items():
             for parent, ci, link in links[i]:
