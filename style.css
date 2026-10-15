@@ -191,8 +191,8 @@ html,body{min-width:1040px;overflow:hidden}
 .stash-mode .visual .legend,.stash-mode .visual .visual-foot{flex:0 0 auto}
 .stash-mode #stepsPane{overflow-y:auto}
 .stash-mode .step-list{max-height:none;min-height:0}
-.stash-mode .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
-.stash-mode .metric{display:flex;flex-direction:column;align-items:center;padding:12px 5px;text-align:center;border-right:1px solid #3d4538;border-bottom:0;overflow-wrap:anywhere}
+.stash-mode .metrics{grid-template-columns:repeat(3,minmax(max-content,1fr))}
+.stash-mode .metric{display:flex;flex-direction:column;align-items:center;padding:12px 5px;text-align:center;border-right:1px solid #3d4538;border-bottom:0;white-space:nowrap}
 .stash-mode .metric:last-child{border-right:0}
 .stash-mode .metric-num{font-size:25px;max-width:100%}
 .stash-mode .metric-label{margin-top:7px}
@@ -256,7 +256,7 @@ html,body{min-width:1040px;overflow:hidden}
 
 /* Three sibling work panels with keyboard and pointer adjustable boundaries. */
 .page-planner .layout{
- grid-template-columns:minmax(250px,var(--inventory-fr,1.05fr)) 14px minmax(220px,var(--analysis-fr,.9fr)) 14px minmax(260px,var(--preview-fr,1.2fr));
+ grid-template-columns:minmax(250px,var(--inventory-fr,1.05fr)) 14px minmax(var(--analysis-min-width,220px),var(--analysis-fr,.9fr)) 14px minmax(260px,var(--preview-fr,1.2fr));
  gap:6px;align-items:stretch;
 }
 .page-planner .layout>.inventory-panel{grid-column:1;grid-row:1}
@@ -324,8 +324,9 @@ html,body{min-width:1040px;overflow:hidden}
 .search-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;color:var(--text);font-size:13px}
 .search-total strong{font:600 16px var(--mono);overflow-wrap:anywhere}
 .analysis-controls{display:flex;flex-direction:column;gap:8px;margin-top:12px;flex:0 0 auto;min-width:0}
-.analysis-actions{display:flex;flex-wrap:wrap;gap:6px}
-.analysis-actions .btn{white-space:normal;min-height:34px;font-size:13px;line-height:1.4;text-align:left}
+.analysis-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;justify-content:center}
+.analysis-actions.is-wide{grid-template-columns:repeat(4,minmax(0,1fr))}
+.analysis-actions .btn{width:100%;min-width:0;white-space:nowrap;min-height:34px;font-size:13px;line-height:1.4;text-align:center;justify-content:center}
 .analysis-actions .btn:disabled{opacity:.45;cursor:default}
 
 .settings-row{grid-template-columns:1fr}

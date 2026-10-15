@@ -346,11 +346,34 @@ function switchPage(page){
  if(smallScreen())setSidebarCollapsed(true,false);
  if(!settings){plan();requestAnimationFrame(renderGrid)}
 }
+// Keep intrinsic text widths in sync with results, language, fonts and dragging.
+function initAnalysisSizing(){
+ const layout=$('plannerLayout'),panel=$('result'),metrics=panel.querySelector('.metrics'),actions=panel.querySelector('.analysis-actions');
+ const horizontalChrome=element=>{const css=getComputedStyle(element);return ['paddingLeft','paddingRight','borderLeftWidth','borderRightWidth'].reduce((total,key)=>total+(parseFloat(css[key])||0),0)};
+ const textWidth=element=>{const range=document.createRange();range.selectNodeContents(element);return range.getBoundingClientRect().width};
+ let frame=0;
+ const update=()=>{
+  frame=0;
+  const cellWidth=Math.max(...[...metrics.children].map(cell=>Math.max(...[...cell.children].map(textWidth))+horizontalChrome(cell)));
+  const buttonWidth=Math.max(...[...actions.children].map(button=>textWidth(button)+horizontalChrome(button)));
+  const gap=parseFloat(getComputedStyle(actions).columnGap)||0;
+  const minimum=Math.ceil(Math.max(cellWidth*3+horizontalChrome(metrics),buttonWidth*2+gap)+horizontalChrome(panel));
+  const value=`${Math.max(220,minimum)}px`;
+  if(layout.style.getPropertyValue('--analysis-min-width')!==value)layout.style.setProperty('--analysis-min-width',value);
+  actions.classList.toggle('is-wide',actions.clientWidth>=Math.ceil(buttonWidth*4+gap*3));
+ };
+ const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};
+ new ResizeObserver(schedule).observe(panel);
+ new MutationObserver(schedule).observe(panel,{childList:true,characterData:true,subtree:true});
+ document.fonts?.ready.then(schedule);
+ schedule();
+}
+initAnalysisSizing();
 function initLayoutResizers(){
  const layout=$('plannerLayout');if(!layout)return;
  const panels=[$('inventory'),$('result'),document.querySelector('.visual')];
  const bars=[...layout.querySelectorAll('[data-resizer]')];
- const minWidths=[250,220,260];
+ const minWidths=()=>[250,Math.max(220,parseFloat(getComputedStyle(layout).getPropertyValue('--analysis-min-width'))||220),260];
  const storageKey='stash-lab-layout-columns';
  const readWidths=()=>panels.map(panel=>panel.getBoundingClientRect().width);
  const setWidths=widths=>{
@@ -358,8 +381,8 @@ function initLayoutResizers(){
   ['--inventory-fr','--analysis-fr','--preview-fr'].forEach((name,index)=>layout.style.setProperty(name,`${widths[index]/total}fr`));
   bars.forEach((bar,index)=>{
    const pair=widths[index]+widths[index+1];
-   bar.setAttribute('aria-valuemin',String(minWidths[index]));
-   bar.setAttribute('aria-valuemax',String(Math.max(minWidths[index],Math.round(pair-minWidths[index+1]))));
+   bar.setAttribute('aria-valuemin',String(minWidths()[index]));
+   bar.setAttribute('aria-valuemax',String(Math.max(minWidths()[index],Math.round(pair-minWidths()[index+1]))));
    bar.setAttribute('aria-valuenow',String(Math.round(widths[index])));
   });
  };
@@ -374,7 +397,7 @@ function initLayoutResizers(){
  }catch(e){}
  const updatePair=(index,leftWidth,pairWidth)=>{
   const widths=readWidths();
-  const minLeft=minWidths[index],minRight=minWidths[index+1];
+  const minLeft=minWidths()[index],minRight=minWidths()[index+1];
   const nextLeft=Math.max(minLeft,Math.min(pairWidth-minRight,leftWidth));
   widths[index]=nextLeft;widths[index+1]=pairWidth-nextLeft;setWidths(widths);
  };
