@@ -330,3 +330,6 @@ html,body{min-width:1040px;overflow:hidden}
 .settings-row{grid-template-columns:1fr}
 
 .result-heading{flex-wrap:wrap}
+
+.live-analysis-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
+.live-analysis-toggle input{width:18px;height:18px;accent-color:var(--accent,#c5a66b);cursor:pointer}

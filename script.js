@@ -56,7 +56,7 @@ const AREA=(i)=>i.ow*i.oh;
 const SAMPLE={"6sh118":1,"trizip":1,"scavbp":2,"mbss":2};
 const KEY='stash-lab-planner-v1';
 let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
-const state={stashW:Math.min(20,Math.max(4,Number(saved.stashW)||10)),stashH:Math.min(100,Math.max(8,Number(saved.stashH)||28)),lang:saved.lang==='en'?'en':'zh',qty:(saved.qty&&typeof saved.qty==='object')?saved.qty:{...SAMPLE},custom:Array.isArray(saved.custom)?saved.custom.filter(isCustomValid).slice(0,60):[],depth:Math.min(6,Math.max(2,Number(saved.depth)||6)),rotate:saved.rotate!==false,mergeBags:saved.mergeBags===true,query:'',onlyOwned:false,solution:null,viewId:null};
+const state={liveAnalysis:saved.liveAnalysis!==false,stashW:Math.min(20,Math.max(4,Number(saved.stashW)||10)),stashH:Math.min(100,Math.max(8,Number(saved.stashH)||28)),lang:saved.lang==='en'?'en':'zh',qty:(saved.qty&&typeof saved.qty==='object')?saved.qty:{...SAMPLE},custom:Array.isArray(saved.custom)?saved.custom.filter(isCustomValid).slice(0,60):[],depth:Math.min(6,Math.max(2,Number(saved.depth)||6)),rotate:saved.rotate!==false,mergeBags:saved.mergeBags===true,query:'',onlyOwned:false,solution:null,viewId:null};
 function isCustomValid(x){return x&&/^u-[\w-]{3,40}$/.test(x.id||'')&&typeof x.n==='string'&&x.n.length<=50&&x.cat==='bag'&&[x.ow,x.oh].every(v=>Number.isInteger(v)&&v>=1&&v<=15)&&Array.isArray(x.comp)&&x.comp.length>=1&&x.comp.length<=4&&x.comp.every(c=>Number.isInteger(c.w)&&Number.isInteger(c.h)&&c.w>=1&&c.h>=1&&c.w<=15&&c.h<=15)}
 function backpackConfig(d,extraCustom=[]){
  const catalog=new Map(extraCustom.filter(isCustomValid).map(item=>[item.id,item]));
@@ -71,7 +71,7 @@ function validConfig(d){return d&&d.format==='stash-lab-v1'&&d.qty&&typeof d.qty
 let memories=[];try{const data=JSON.parse(localStorage.getItem(MEMORY_KEY)||'[]');if(Array.isArray(data))memories=data.filter(m=>m&&typeof m.id==='string'&&typeof m.name==='string'&&validConfig(m.config)).map(m=>({...m,config:backpackConfig(m.config,state.custom)}));localStorage.setItem(MEMORY_KEY,JSON.stringify(memories))}catch(e){}
 let xray=false,previewCellSize=null,previewRenderedCell=24,previewMaxCell=24;
 const getAll=()=>[...BASE,...state.custom];const byId=id=>getAll().find(i=>i.id===id);const count=()=>Object.entries(state.qty).reduce((n,[id,q])=>n+(byId(id)?Math.min(100,Math.max(0,Number(q)||0)):0),0);
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({qty:state.qty,custom:state.custom,depth:state.depth,rotate:state.rotate,mergeBags:state.mergeBags,lang:state.lang,mode:'stash',stashW:state.stashW,stashH:state.stashH}))}catch(e){}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({liveAnalysis:state.liveAnalysis,qty:state.qty,custom:state.custom,depth:state.depth,rotate:state.rotate,mergeBags:state.mergeBags,lang:state.lang,mode:'stash',stashW:state.stashW,stashH:state.stashH}))}catch(e){}}
 let toastTimer=0;function toast(msg){$('toast').textContent=msg;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600)}
 
 const LANG_MAP={
@@ -160,6 +160,8 @@ const LANG_MAP={
  "口袋": "pockets",
  "整個網頁可離線運作，不連接 EFT、不需要登入。自訂背包與目前配置會保存在此瀏覽器，也可從左側管理與匯出。格數資料可參照": "The page runs offline without accessing EFT or requiring sign-in. Custom items and setups stay in this browser. Manage and export them from the left panel. Reference:",
  "停止搜尋": "Stop search",
+ "開始分析": "Start analysis",
+ "即時分析": "Live analysis",
  "停止分析": "Stop analysis",
  "繼續分析": "Continue analysis",
  "重新分析": "Restart analysis",
@@ -475,13 +477,14 @@ function explainUnplaced(sol,item){
 function allNodes(root){const out=[root];for(let i=0;i<out.length;i++)out.push(...out[i].children);return out}
 function getSteps(root){const steps=[];function visit(parent){for(const child of parent.children)visit(child);for(const child of parent.children){const p=child.location;steps.push({from:child,to:parent,loc:p})}}visit(root);return steps}
 function shortNode(n){return `${n.n} [${n.uid.split('#')[1]}]`}
-let packingWorker=null,searchGeneration=0,packingInputKey=null,packingVisited=0,packingStopping=false;
+let packingWorker=null,searchGeneration=0,packingInputKey=null,packingVisited=0,packingStopping=false,packingHasRun=false;
 function restorePackingParents(node,parent=null){node.parent=parent;node.children=node.children.map(child=>restorePackingParents(child,node));return node}
 function showSearchStatus(message,running){
  $('searchStatus').hidden=false;$('searchStatusText').textContent=message;
  $('searchTotalCount').textContent=packingVisited.toLocaleString();
+ $('startSearchBtn').disabled=running||!count();
  $('cancelSearchBtn').disabled=!running||packingStopping;
- $('continueSearchBtn').disabled=running||state.solution?.optimal===true||!count();
+ $('continueSearchBtn').disabled=!packingHasRun||running||state.solution?.optimal===true||!count();
  $('restartSearchBtn').disabled=packingStopping;
 }
 function betterPacking(a,b){
@@ -492,13 +495,21 @@ function betterPacking(a,b){
 function plan(options={}){
  const input={mode:'stash',depth:state.depth,rotate:state.rotate,stashW:state.stashW,stashH:state.stashH,items:getAll().map(it=>({it,qty:Math.min(100,Math.max(0,Number(state.qty[it.id])||0))})).filter(entry=>entry.qty>0)};
  const inputKey=JSON.stringify(input),sameInput=inputKey===packingInputKey;
- if(sameInput&&!options.restart&&!options.unlimited){renderResult();return}
+ if(!state.liveAnalysis&&!options.restart&&!options.unlimited){
+  if(!sameInput){
+   packingWorker?.terminate();packingWorker=null;++searchGeneration;packingStopping=false;packingHasRun=false;
+   packingInputKey=inputKey;packingVisited=0;state.solution=null;state.viewId=null;
+   showSearchStatus(t('配置待分析；請按開始分析','Configuration ready; press Start analysis'),false);
+  }
+  renderResult();return;
+ }
+ if(sameInput&&packingHasRun&&!options.restart&&!options.unlimited){renderResult();return}
  const continuing=sameInput&&options.unlimited;
  if(!continuing){packingVisited=0;state.solution=null;state.viewId=null}
  const baseVisited=packingVisited;
  if(continuing&&state.solution?.resumeHint)input.resumeHint=state.solution.resumeHint;
  input.unlimited=!!options.unlimited;input.requestId=globalThis.crypto?.randomUUID?.()||`analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`;
- packingInputKey=inputKey;packingWorker?.terminate();const generation=++searchGeneration;packingStopping=false;
+ packingHasRun=true;packingInputKey=inputKey;packingWorker?.terminate();const generation=++searchGeneration;packingStopping=false;
  renderResult();showSearchStatus(options.unlimited?t('持續分析中 · 無時間上限；尚未證明最佳','Analyzing without a time limit; optimality not yet proven'):t('正在分析收納配置…','Analyzing packing constraints…'),true);
  const worker=new Worker('packing-worker.js');packingWorker=worker;
  function finish(message){packingWorker=null;packingStopping=false;worker.terminate();showSearchStatus(message,false)}
@@ -530,6 +541,13 @@ $('cancelSearchBtn').addEventListener('click',()=>{
  if(!packingWorker||packingStopping)return;
  packingStopping=true;showSearchStatus(t('正在停止分析並取得最後查找總數…','Stopping analysis and collecting the final search total…'),true);
  packingWorker.postMessage({command:'stop'});
+});
+$('startSearchBtn').addEventListener('click',()=>plan({restart:true}));
+$('liveAnalysisToggle').checked=state.liveAnalysis;
+$('liveAnalysisToggle').addEventListener('change',e=>{
+ state.liveAnalysis=e.target.checked;persist();
+ if(state.liveAnalysis)plan({restart:true});
+ else if(packingWorker&&!packingStopping)$('cancelSearchBtn').click();
 });
 $('continueSearchBtn').addEventListener('click',()=>plan({unlimited:true}));
 $('restartSearchBtn').addEventListener('click',()=>plan({restart:true}));
