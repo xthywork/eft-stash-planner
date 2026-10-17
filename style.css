@@ -375,7 +375,7 @@ a{color:var(--accent2)}
 .panel-title{color:#d2d1c3}
 .panel-desc{color:#abaea1}
 .count-chip{background:#262624;border-color:#6a6966;color:#cccbc8;border-radius:0}
-.result-heading{background:#2d302e;box-shadow:0 1px #4b5049}
+.result-heading{background:transparent;box-shadow:0 1px #4b5049}
 .result-heading h2{color:#d2d1c3}
 .result-badge{border-radius:0;border-color:#706f6b;background:#292826;color:#c2c1bd}
 .result-badge.partial{border-color:#706f68;background:#2b2a27;color:#c0bfb8}
