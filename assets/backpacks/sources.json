@@ -1,0 +1,222 @@
+{
+  "6sh118": {
+    "id": "5df8a4d786f77412672a1e3b",
+    "url": "https://assets.tarkov.dev/5df8a4d786f77412672a1e3b-base-image.webp",
+    "name": "6Sh118 raid backpack (EMR)"
+  },
+  "sfmp": {
+    "id": "5e4abc6786f77406812bd572",
+    "url": "https://assets.tarkov.dev/5e4abc6786f77406812bd572-base-image.webp",
+    "name": "LBT-2670 Slim Field Med Pack (Black)"
+  },
+  "rush100": {
+    "id": "67458730df3c1da90b0b052b",
+    "url": "https://assets.tarkov.dev/67458730df3c1da90b0b052b-base-image.webp",
+    "name": "5.11 Tactical RUSH 100 backpack (Black)"
+  },
+  "blackjack": {
+    "id": "5c0e774286f77468413cc5b2",
+    "url": "https://assets.tarkov.dev/5c0e774286f77468413cc5b2-base-image.webp",
+    "name": "Mystery Ranch Blackjack 50 backpack (MultiCam)"
+  },
+  "f4": {
+    "id": "5f5e46b96bdad616ad46d613",
+    "url": "https://assets.tarkov.dev/5f5e46b96bdad616ad46d613-base-image.webp",
+    "name": "Eberlestock F4 Terminator load bearing backpack (Tiger Stripe)"
+  },
+  "satl": {
+    "id": "656e0436d44a1bb4220303a0",
+    "url": "https://assets.tarkov.dev/656e0436d44a1bb4220303a0-base-image.webp",
+    "name": "Mystery Ranch SATL Bridger Assault Pack (Foliage)"
+  },
+  "attack2": {
+    "id": "5ab8ebf186f7742d8b372e80",
+    "url": "https://assets.tarkov.dev/5ab8ebf186f7742d8b372e80-base-image.webp",
+    "name": "SSO Attack 2 raid backpack (Khaki)"
+  },
+  "trooper": {
+    "id": "639346cc1c8f182ad90c8972",
+    "url": "https://assets.tarkov.dev/639346cc1c8f182ad90c8972-base-image.webp",
+    "name": "Tasmanian Tiger Trooper 35 backpack (Khaki)"
+  },
+  "pilgrim": {
+    "id": "59e763f286f7742ee57895da",
+    "url": "https://assets.tarkov.dev/59e763f286f7742ee57895da-base-image.webp",
+    "name": "Pilgrim tourist backpack"
+  },
+  "santa": {
+    "id": "61b9e1aaef9a1b5d6a79899a",
+    "url": "https://assets.tarkov.dev/61b9e1aaef9a1b5d6a79899a-base-image.webp",
+    "name": "Santa's Bag"
+  },
+  "paratus": {
+    "id": "5c0e805e86f774683f3dd637",
+    "url": "https://assets.tarkov.dev/5c0e805e86f774683f3dd637-base-image.webp",
+    "name": "3V Gear Paratus 3-Day Operator's Tactical backpack (Foliage Grey)"
+  },
+  "g2": {
+    "id": "6034d2d697633951dc245ea6",
+    "url": "https://assets.tarkov.dev/6034d2d697633951dc245ea6-base-image.webp",
+    "name": "Eberlestock G2 Gunslinger II backpack (Dry Earth)"
+  },
+  "oakley": {
+    "id": "5d5d940f86f7742797262046",
+    "url": "https://assets.tarkov.dev/5d5d940f86f7742797262046-base-image.webp",
+    "name": "Oakley Mechanism heavy duty backpack (Black)"
+  },
+  "beta2": {
+    "id": "5b44c6ae86f7742d1627baea",
+    "url": "https://assets.tarkov.dev/5b44c6ae86f7742d1627baea-base-image.webp",
+    "name": "ANA Tactical Beta 2 Battle backpack (Olive Drab)"
+  },
+  "t30": {
+    "id": "628e1ffc83ec92260c0f437f",
+    "url": "https://assets.tarkov.dev/628e1ffc83ec92260c0f437f-base-image.webp",
+    "name": "Gruppa 99 T30 backpack (Black)"
+  },
+  "t30mc": {
+    "id": "62a1b7fbc30cfa1d366af586",
+    "url": "https://assets.tarkov.dev/62a1b7fbc30cfa1d366af586-base-image.webp",
+    "name": "Gruppa 99 T30 backpack (MultiCam)"
+  },
+  "switchblade": {
+    "id": "5f5e467b0bc58666c37e7821",
+    "url": "https://assets.tarkov.dev/5f5e467b0bc58666c37e7821-base-image.webp",
+    "name": "Eberlestock F5 Switchblade backpack (Dry Earth)"
+  },
+  "trizip": {
+    "id": "545cdae64bdc2d39198b4568",
+    "url": "https://assets.tarkov.dev/545cdae64bdc2d39198b4568-base-image.webp",
+    "name": "Camelbak Tri-Zip assault backpack (Foliage)"
+  },
+  "trizipmc": {
+    "id": "66b5f22b78bbc0200425f904",
+    "url": "https://assets.tarkov.dev/66b5f22b78bbc0200425f904-base-image.webp",
+    "name": "Camelbak Tri-Zip assault backpack (MultiCam)"
+  },
+  "terra": {
+    "id": "674da107c512807d1a0e7436",
+    "url": "https://assets.tarkov.dev/674da107c512807d1a0e7436-base-image.webp",
+    "name": "Mystery Ranch Terraframe backpack (Olive Drab)"
+  },
+  "terrace": {
+    "id": "674da9cf0cb4bcde7103c07b",
+    "url": "https://assets.tarkov.dev/674da9cf0cb4bcde7103c07b-base-image.webp",
+    "name": "Mystery Ranch Terraframe backpack (Christmas Edition)"
+  },
+  "rkpt25": {
+    "id": "656ddcf0f02d7bcea90bf395",
+    "url": "https://assets.tarkov.dev/656ddcf0f02d7bcea90bf395-base-image.webp",
+    "name": "Tehinkom RK-PT-25 patrol backpack (EMR)"
+  },
+  "dragonegg": {
+    "id": "656f198fb27298d6fd005466",
+    "url": "https://assets.tarkov.dev/656f198fb27298d6fd005466-base-image.webp",
+    "name": "Direct Action Dragon Egg Mark II backpack (Black)"
+  },
+  "lbt1476": {
+    "id": "618cfae774bb2d036a049e7c",
+    "url": "https://assets.tarkov.dev/618cfae774bb2d036a049e7c-base-image.webp",
+    "name": "LBT-1476A 3Day Pack (Woodland)"
+  },
+  "lbt1476alpine": {
+    "id": "67458794e21e5d724e066976",
+    "url": "https://assets.tarkov.dev/67458794e21e5d724e066976-base-image.webp",
+    "name": "LBT-1476A 3Day Pack (MultiCam Alpine)"
+  },
+  "t20": {
+    "id": "618bb76513f5097c8d5aa2d5",
+    "url": "https://assets.tarkov.dev/618bb76513f5097c8d5aa2d5-base-image.webp",
+    "name": "Gruppa 99 T20 backpack (Umber Brown)"
+  },
+  "t20mc": {
+    "id": "619cf0335771dd3c390269ae",
+    "url": "https://assets.tarkov.dev/619cf0335771dd3c390269ae-base-image.webp",
+    "name": "Gruppa 99 T20 backpack (MultiCam)"
+  },
+  "drawbridge": {
+    "id": "60a272cc93ef783291411d8e",
+    "url": "https://assets.tarkov.dev/60a272cc93ef783291411d8e-base-image.webp",
+    "name": "Hazard 4 Drawbridge backpack (Coyote Tan)"
+  },
+  "takedown": {
+    "id": "6034d103ca006d2dca39b3f0",
+    "url": "https://assets.tarkov.dev/6034d103ca006d2dca39b3f0-base-image.webp",
+    "name": "Hazard 4 Takedown sling backpack (Black)"
+  },
+  "takedownmc": {
+    "id": "6038d614d10cbf667352dd44",
+    "url": "https://assets.tarkov.dev/6038d614d10cbf667352dd44-base-image.webp",
+    "name": "Hazard 4 Takedown sling backpack (MultiCam)"
+  },
+  "partisan": {
+    "id": "66a9f98f3bd5a41b162030f4",
+    "url": "https://assets.tarkov.dev/66a9f98f3bd5a41b162030f4-base-image.webp",
+    "name": "Partisan's bag"
+  },
+  "pillbox": {
+    "id": "60a2828e8689911a226117f9",
+    "url": "https://assets.tarkov.dev/60a2828e8689911a226117f9-base-image.webp",
+    "name": "Hazard 4 Pillbox backpack (Black)"
+  },
+  "scavbp": {
+    "id": "56e335e4d2720b6c058b456d",
+    "url": "https://assets.tarkov.dev/56e335e4d2720b6c058b456d-base-image.webp",
+    "name": "Scav backpack"
+  },
+  "berkut": {
+    "id": "5ca20d5986f774331e7c9602",
+    "url": "https://assets.tarkov.dev/5ca20d5986f774331e7c9602-base-image.webp",
+    "name": "WARTECH Berkut BB-102 backpack (A-TACS FG)"
+  },
+  "daypack": {
+    "id": "5e9dcf5986f7746c417435b3",
+    "url": "https://assets.tarkov.dev/5e9dcf5986f7746c417435b3-base-image.webp",
+    "name": "LBT-8005A Day Pack backpack (MultiCam Black)"
+  },
+  "sanitar": {
+    "id": "5e997f0b86f7741ac73993e2",
+    "url": "https://assets.tarkov.dev/5e997f0b86f7741ac73993e2-base-image.webp",
+    "name": "Sanitar's bag"
+  },
+  "mbss": {
+    "id": "544a5cde4bdc2d39388b456b",
+    "url": "https://assets.tarkov.dev/544a5cde4bdc2d39388b456b-base-image.webp",
+    "name": "Flyye MBSS backpack (UCP)"
+  },
+  "vertx": {
+    "id": "66b5f247af44ca0014063c02",
+    "url": "https://assets.tarkov.dev/66b5f247af44ca0014063c02-base-image.webp",
+    "name": "Vertx Ready Pack backpack (Red)"
+  },
+  "nicecomm": {
+    "id": "628bc7fb408e2b2e9c0801b1",
+    "url": "https://assets.tarkov.dev/628bc7fb408e2b2e9c0801b1-base-image.webp",
+    "name": "Mystery Ranch NICE COMM 3 BVS frame system (Coyote)"
+  },
+  "duffle": {
+    "id": "56e33634d2720bd8058b456b",
+    "url": "https://assets.tarkov.dev/56e33634d2720bd8058b456b-base-image.webp",
+    "name": "Duffle bag"
+  },
+  "transfer": {
+    "id": "5f5e45cc5021ce62144be7aa",
+    "url": "https://assets.tarkov.dev/5f5e45cc5021ce62144be7aa-base-image.webp",
+    "name": "LolKek 3F Transfer tourist backpack"
+  },
+  "transformer": {
+    "id": "56e33680d2720be2748b4576",
+    "url": "https://assets.tarkov.dev/56e33680d2720be2748b4576-base-image.webp",
+    "name": "Transformer Bag"
+  },
+  "vkbo": {
+    "id": "5ab8ee7786f7742d8f33f0b9",
+    "url": "https://assets.tarkov.dev/5ab8ee7786f7742d8f33f0b9-base-image.webp",
+    "name": "VKBO army bag"
+  },
+  "sling": {
+    "id": "5ab8f04f86f774585f4237d8",
+    "url": "https://assets.tarkov.dev/5ab8f04f86f774585f4237d8-base-image.webp",
+    "name": "Tactical sling bag (Khaki)"
+  }
+}
