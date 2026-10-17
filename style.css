@@ -361,21 +361,22 @@ a{color:var(--accent2)}
 .sidebar-toggle:hover{background:#3f3f3f;border-color:#9f9e9b;color:#e8e8e6}
 .sidebar .nav-link{border-radius:0;border-color:transparent;background:transparent;color:#b7b6b5}
 .sidebar .nav-link:hover{background:#333333;border-color:#676665;color:#e0e0df}
-.sidebar .nav-link.active{background:#a8a7a5;border-color:#bfbfbd;color:#171716;box-shadow:none}
-.sidebar .nav-link.active .saved-memory-badge{color:#242422}
+.sidebar .nav-link.active{background:#303126;border-color:#6c6654;color:#d0c8aa;box-shadow:none}
+.sidebar .nav-link.active .saved-memory-badge{color:#d0c8aa}
 .sidebar .lang-switch{border-color:#525251!important;background:#181818}
 .lang-badge{background:#323231;border-color:#757573;color:#c6c5c2;border-radius:0}
 .side-bottom{border-color:#4d4d4c}
 .saved-memory-badge{color:#b9b8b5}
 .panel{background:#141414;border-color:#494847;border-radius:0;box-shadow:0 2px 8px #0008}
-.panel-head,.visual-head{background:#989897;border-color:#b5b5b3;box-shadow:inset 0 1px #e1e6d533}
+.panel-head,.visual-head{background:#2d302e;border-color:#4b5049;box-shadow:inset 0 1px #ffffff08}
 .panel-title,.result-heading h2,.settings-page-top h2,.modal-header h3,.saved-memory-heading h3{
  font-family:var(--sans);font-weight:600;letter-spacing:.025em;text-shadow:none;
 }
-.panel-title,.panel-desc{color:#141413}
+.panel-title{color:#d2d1c3}
+.panel-desc{color:#abaea1}
 .count-chip{background:#262624;border-color:#6a6966;color:#cccbc8;border-radius:0}
-.result-heading{background:#969593;box-shadow:0 1px #c7c6c4}
-.result-heading h2{color:#171715}
+.result-heading{background:#2d302e;box-shadow:0 1px #4b5049}
+.result-heading h2{color:#d2d1c3}
 .result-badge{border-radius:0;border-color:#706f6b;background:#292826;color:#c2c1bd}
 .result-badge.partial{border-color:#706f68;background:#2b2a27;color:#c0bfb8}
 .result-badge.nope{border-color:#656462;background:#31302e;color:#bcbbb8}
@@ -456,7 +457,7 @@ a{color:var(--accent2)}
 .column-resizer:before{background:#52514d;border-radius:0}
 .column-resizer:hover:before,.column-resizer.is-resizing:before{background:#9f9e97}
 .column-resizer:focus-visible:before{background:#c4c2bb;box-shadow:0 0 0 3px #87aa4b33}
-.viewer-tab{background:transparent;border-color:transparent;color:#1f1f1c}
+.viewer-tab{background:transparent;border-color:transparent;color:#b9b9ad}
 .viewer-tab:hover{background:#afaeaa;color:#0f0f0d}
 .viewer-tab.active,.viewer-tab[aria-selected=true]{background:#23221f;border-color:#4f4e49;color:#d0cfca;box-shadow:none;text-shadow:none}
 .xray-toggle[aria-pressed=true]{background:#41403c;border-color:#96958d;color:#cbcac5}
@@ -567,7 +568,6 @@ a{color:var(--accent2)}
 .item-card[data-item="sling"],.node-cell[data-view^="sling#"]{--backpack-icon-opacity:0;--backpack-art:url("assets/backpacks/sling.webp")}
 
 /* Worn-paper highlights, rather than a green tint over the interface. */
-.sidebar .nav-link.active{background:#b0ad9d}
 .btn-primary{background:#a49b7d;border-color:#c1b899;color:#17160f}
 .btn-primary:hover{background:#c2b798;border-color:#dfd3b3;color:#15140e}
 .metric-num{color:#d5cfb9}
